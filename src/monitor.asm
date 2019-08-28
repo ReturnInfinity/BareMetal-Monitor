@@ -62,30 +62,94 @@ start:
 	dec ax
 	mov [Screen_Cursor_Row], ax
 
+	mov rsi, cpumsg
+	call output
+	xor eax, eax
+	mov rsi, 0x5012
+	lodsw
+	mov rdi, temp_string
+	mov rsi, rdi
+	call string_from_int
+	call output
+	mov rsi, coresmsg
+	call output
+	mov rsi, 0x5010
+	lodsw
+	mov rdi, temp_string
+	mov rsi, rdi
+	call string_from_int
+	call output
+	mov rsi, mhzmsg
+	call output
+	mov rsi, memmsg
+	call output
+	mov rsi, 0x5020
+	lodsd
+	mov rdi, temp_string
+	mov rsi, rdi
+	call string_from_int
+	call output
+	mov rsi, mibmsg
+	call output
+	mov rsi, closebracketmsg
+	call output
+	mov rsi, newline
+	call output
+
 poll:
 	mov rsi, prompt
 	call output
 	mov rdi, temp_string
 	mov rcx, 100
 	call input
+
+	mov rsi, ver_string
+	call string_compare
+	jc print_ver
+
 	jmp poll
+
+print_ver:
+	mov rsi, ver
+	call output
+	jmp poll
+
 
 	jmp $			; Spin forever
 
-prompt: db '> ', 0
-VideoBase: dq 0
-Screen_Pixels: dd 0
-Screen_Bytes: dd 0
-Screen_Row_2: dd 0
-FG_Color: dd 0
-BG_Color: dd 0
-VideoX: dw 0
-VideoY: dw 0
-Screen_Rows: dw 0
-Screen_Cols: dw 0
-Screen_Cursor_Row: dw 0
-Screen_Cursor_Col: dw 0
-VideoDepth: db 0
+; Strings
+
+prompt:			db '> ', 0
+ver:			db '1.0', 13, 0
+ver_string:		db 'ver', 0
+cpumsg:			db '[cpu: ', 0
+memmsg:			db ']  [mem: ', 0
+networkmsg:		db ']  [net: ', 0
+diskmsg:		db ']  [hdd: ', 0
+mibmsg:			db ' MiB', 0
+mhzmsg:			db ' MHz', 0
+coresmsg:		db ' x ', 0
+namsg:			db 'N/A', 0
+closebracketmsg:	db ']', 0
+space:			db ' ', 0
+newline:		db 13, 0
+tab:			db 9, 0
+
+; Variables
+
+VideoBase:		dq 0
+Screen_Pixels:		dd 0
+Screen_Bytes:		dd 0
+Screen_Row_2:		dd 0
+FG_Color:		dd 0
+BG_Color:		dd 0
+VideoX:			dw 0
+VideoY:			dw 0
+Screen_Rows:		dw 0
+Screen_Cols:		dw 0
+Screen_Cursor_Row:	dw 0
+Screen_Cursor_Col:	dw 0
+VideoDepth:		db 0
 
 
 ; -----------------------------------------------------------------------------
@@ -548,6 +612,91 @@ string_length:
 
 	pop rax
 	pop rdi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; string_compare -- See if two strings match
+;  IN:	RSI = string one
+;	RDI = string two
+; OUT:	Carry flag set if same
+string_compare:
+	push rsi
+	push rdi
+	push rbx
+	push rax
+
+string_compare_more:
+	mov al, [rsi]			; Store string contents
+	mov bl, [rdi]
+	test al, al			; End of first string?
+	jz string_compare_terminated
+	cmp al, bl
+	jne string_compare_not_same
+	inc rsi
+	inc rdi
+	jmp string_compare_more
+
+string_compare_not_same:
+	pop rax
+	pop rbx
+	pop rdi
+	pop rsi
+	clc
+	ret
+
+string_compare_terminated:
+	test bl, bl			; End of second string?
+	jnz string_compare_not_same
+
+	pop rax
+	pop rbx
+	pop rdi
+	pop rsi
+	stc
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; string_from_int -- Convert a binary integer into an string
+;  IN:	RAX = binary integer
+;	RDI = location to store string
+; OUT:	RDI = points to end of string
+;	All other registers preserved
+; Min return value is 0 and max return value is 18446744073709551615 so the
+; string needs to be able to store at least 21 characters (20 for the digits
+; and 1 for the string terminator).
+; Adapted from http://www.cs.usfca.edu/~cruse/cs210s09/rax2uint.s
+string_from_int:
+	push rdx
+	push rcx
+	push rbx
+	push rax
+
+	mov rbx, 10					; base of the decimal system
+	xor ecx, ecx					; number of digits generated
+string_from_int_next_divide:
+	xor edx, edx					; RAX extended to (RDX,RAX)
+	div rbx						; divide by the number-base
+	push rdx					; save remainder on the stack
+	inc rcx						; and count this remainder
+	test rax, rax					; was the quotient zero?
+	jnz string_from_int_next_divide			; no, do another division
+
+string_from_int_next_digit:
+	pop rax						; else pop recent remainder
+	add al, '0'					; and convert to a numeral
+	stosb						; store to memory-buffer
+	loop string_from_int_next_digit			; again for other remainders
+	xor al, al
+	stosb						; Store the null terminator at the end of the string
+
+	pop rax
+	pop rbx
+	pop rcx
+	pop rdx
 	ret
 ; -----------------------------------------------------------------------------
 
