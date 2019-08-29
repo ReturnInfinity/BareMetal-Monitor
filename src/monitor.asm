@@ -10,7 +10,6 @@ start:
 	xor eax, eax
 	lodsd				; VIDEO_BASE
 	mov [VideoBase], rax
-
 	xor eax, eax
 	xor ecx, ecx
 	lodsw				; VIDEO_X
@@ -19,17 +18,16 @@ start:
 	mov cl, [font_width]
 	div cx
 	mov [Screen_Cols], ax
-
 	lodsw				; VIDEO_Y
 	mov [VideoY], ax		; ex: 768
 	xor edx, edx
 	mov cl, [font_height]
 	div cx
 	mov [Screen_Rows], ax
-
 	lodsb				; VIDEO_DEPTH
 	mov [VideoDepth], al
 
+	; Calculate screen parameters
 	xor eax, eax
 	xor ecx, ecx
 	mov ax, [VideoX]
@@ -41,7 +39,6 @@ start:
 	shr cl, 3
 	mul ecx
 	mov [Screen_Bytes], eax
-
 	xor eax, eax
 	xor ecx, ecx
 	mov ax, [VideoX]
@@ -52,16 +49,25 @@ start:
 	mul ecx
 	mov dword [Screen_Row_2], eax
 
+	; Set foreground/background color
 	mov eax, 0x00FFFFFF
 	mov [FG_Color], eax
 	mov eax, 0x00404040
 	mov [BG_Color], eax
 
 	call screen_clear
+
+	; Overwrite the kernel b_output function so output goes to the screen instead of the serial port
+	mov rax, output_chars
+	mov rdi, 0x100018
+	stosq
+
+	; Move cursor to bottom of screen
 	mov ax, [Screen_Rows]
 	dec ax
 	mov [Screen_Cursor_Row], ax
 
+	; Output system details
 	mov rsi, cpumsg
 	call output
 	xor eax, eax
@@ -95,6 +101,7 @@ start:
 	call output
 	mov rsi, newline
 	call output
+	call output
 
 poll:
 	mov rsi, prompt
@@ -103,10 +110,40 @@ poll:
 	mov rcx, 100
 	call input
 
-	mov rsi, ver_string
+	mov rsi, command_exec
+	call string_compare
+	jc exec
+
+	mov rsi, command_dir
+	call string_compare
+	jc dir
+
+	mov rsi, command_ver
 	call string_compare
 	jc print_ver
 
+	jmp poll
+
+exec:
+	mov rdi, 0x200000
+	mov rax, 512
+	mov rcx, 1
+	mov rdx, 0
+	call [b_disk_read]
+	call 0x200000
+
+	jmp poll
+
+dir:
+	mov rdi, temp_string
+	mov rsi, rdi
+	mov rax, 1
+	mov rcx, 1
+	mov rdx, 0
+	call [b_disk_read]
+	call output
+	mov rsi, newline
+	call output
 	jmp poll
 
 print_ver:
@@ -121,7 +158,9 @@ print_ver:
 
 prompt:			db '> ', 0
 ver:			db '1.0', 13, 0
-ver_string:		db 'ver', 0
+command_exec:		db 'exec', 0
+command_dir:		db 'dir', 0
+command_ver:		db 'ver', 0
 cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
@@ -208,7 +247,7 @@ input_done:
 	stosb				; We NULL terminate the string
 	mov al, ' '
 	call output_char
-	call print_newline
+	call output_newline
 
 	pop rax
 	pop rdx
@@ -264,24 +303,24 @@ dec_cursor_done:
 
 
 ; -----------------------------------------------------------------------------
-; print_newline -- Reset cursor to start of next line and scroll if needed
+; output_newline -- Reset cursor to start of next line and scroll if needed
 ;  IN:	Nothing
 ; OUT:	All registers preserved
-print_newline:
+output_newline:
 	push rax
 
 	mov word [Screen_Cursor_Col], 0	; Reset column to 0
 	mov ax, [Screen_Rows]		; Grab max rows on screen
 	dec ax					; and subtract 1
 	cmp ax, [Screen_Cursor_Row]		; Is the cursor already on the bottom row?
-	je print_newline_scroll		; If so, then scroll
+	je output_newline_scroll		; If so, then scroll
 	inc word [Screen_Cursor_Row]		; If not, increment the cursor to next row
-	jmp print_newline_done
+	jmp output_newline_done
 
-print_newline_scroll:
+output_newline_scroll:
 	call screen_scroll
 
-print_newline_done:
+output_newline_done:
 	pop rax
 	ret
 ; -----------------------------------------------------------------------------
@@ -493,7 +532,7 @@ output_chars_newline:
 	mov al, [rsi]
 	cmp al, 10
 	je output_chars_newline_skip_LF
-	call print_newline
+	call output_newline
 	jmp output_chars_nextchar
 
 output_chars_newline_skip_LF:
@@ -503,7 +542,7 @@ output_chars_newline_skip_LF:
 
 output_chars_newline_skip_LF_nosub:
 	inc rsi
-	call print_newline
+	call output_newline
 	jmp output_chars_nextchar
 
 output_chars_tab:
