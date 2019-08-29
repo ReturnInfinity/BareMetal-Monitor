@@ -141,9 +141,17 @@ dir:
 	mov rcx, 1
 	mov rdx, 0
 	call [b_disk_read]
+dir_next:
+	cmp byte [rsi], 0
+	je dir_end
 	call output
+	push rsi
 	mov rsi, newline
 	call output
+	pop rsi
+	add rsi, 64		; Next entry
+	jmp dir_next
+dir_end:
 	jmp poll
 
 print_ver:
