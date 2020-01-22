@@ -4,7 +4,7 @@
 
 mkdir src/api
 cd src/api
-wget https://gitlab.com/ReturnInfinity/BareMetal/raw/master/api/libBareMetal.asm 
+wget https://github.com/ReturnInfinity/BareMetal/raw/master/api/libBareMetal.asm 
 cd ../..
 
 mkdir bin
