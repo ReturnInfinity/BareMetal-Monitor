@@ -144,10 +144,22 @@ dir:
 	mov rcx, 1
 	mov rdx, 0
 	call [b_disk_read]
+	mov rax, 1
 dir_next:
 	cmp byte [rsi], 0
 	je dir_end
+
+	push rsi
+	mov rdi, temp_string1
+	mov rsi, rdi
+	call string_from_int
 	call output
+	mov rsi, space
+	call output
+	add al, 1
+	pop rsi
+
+	call output		; Output file name
 	push rsi
 	mov rsi, newline
 	call output
@@ -168,7 +180,12 @@ load:
 	mov rdi, temp_string
 	mov rcx, 2
 	call input
-
+	; int_from_string
+	; load file table
+	; offset to file number
+	; starting sector
+	; size
+	; load to memory
 	jmp poll
 
 ; Strings
@@ -761,6 +778,8 @@ string_from_int_next_digit:
 
 %include 'font.inc'
 
+temp_string1: db 0
+temp_string2: db 0
 temp_string: db 0
 
 ; =============================================================================
