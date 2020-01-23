@@ -110,9 +110,9 @@ poll:
 	mov rcx, 100
 	call input
 
-	mov rsi, command_exec
-	call string_compare
-	jc exec
+;	mov rsi, command_exec
+;	call string_compare
+;	jc exec
 
 	mov rsi, command_dir
 	call string_compare
@@ -122,17 +122,20 @@ poll:
 	call string_compare
 	jc print_ver
 
-	jmp poll
-
-exec:
-	mov rdi, 0x200000
-	mov rax, 512
-	mov rcx, 1
-	mov rdx, 0
-	call [b_disk_read]
-	call 0x200000
+	mov rsi, command_load
+	call string_compare
+	jc load
 
 	jmp poll
+
+;exec:
+;	mov rdi, 0x200000
+;	mov rax, 512
+;	mov rcx, 1
+;	mov rdx, 0
+;	call [b_disk_read]
+;	call 0x200000
+;	jmp poll
 
 dir:
 	mov rdi, temp_string
@@ -155,20 +158,28 @@ dir_end:
 	jmp poll
 
 print_ver:
-	mov rsi, ver
+	mov rsi, message_ver
 	call output
 	jmp poll
 
+load:
+	mov rsi, message_load
+	call output
+	mov rdi, temp_string
+	mov rcx, 2
+	call input
 
-	jmp $			; Spin forever
+	jmp poll
 
 ; Strings
 
 prompt:			db '> ', 0
-ver:			db '1.0', 13, 0
+message_ver:		db '1.0', 13, 0
+message_load:		db 'Enter file number: ', 0
 command_exec:		db 'exec', 0
 command_dir:		db 'dir', 0
 command_ver:		db 'ver', 0
+command_load:		db 'load', 0
 cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
