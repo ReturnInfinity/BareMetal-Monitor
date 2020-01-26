@@ -110,9 +110,9 @@ poll:
 	mov rcx, 100
 	call input
 
-;	mov rsi, command_exec
-;	call string_compare
-;	jc exec
+	mov rsi, command_exec
+	call string_compare
+	jc exec
 
 	mov rsi, command_dir
 	call string_compare
@@ -128,14 +128,9 @@ poll:
 
 	jmp poll
 
-;exec:
-;	mov rdi, 0x200000
-;	mov rax, 512
-;	mov rcx, 1
-;	mov rdx, 0
-;	call [b_disk_read]
-;	call 0x200000
-;	jmp poll
+exec:
+	call 0x200000
+	jmp poll
 
 dir:
 	mov rdi, temp_string
@@ -178,14 +173,34 @@ load:
 	mov rsi, message_load
 	call output
 	mov rdi, temp_string
+	mov rsi, rdi
 	mov rcx, 2
 	call input
-	; int_from_string
+	call string_to_int
+	sub rax, 1		; Files are indexed from 0
+	push rax		; Save the file #
+	; check value
 	; load file table
-	; offset to file number
-	; starting sector
+	mov rdi, temp_string
+	mov rax, 1
+	mov rcx, 1
+	mov rdx, 0
+	call [b_disk_read]
+	; offset to file number and starting sector
+	pop rcx			; Restore the file #
+	shl rcx, 6
+	add rcx, 32		; Offset to starting block # in BMFS file record
+	add rdi, rcx
+	mov rax, [rdi]
+	shl rax, 9		; Shift left by 9 to convert 2M block to 4K sector
 	; size
-	; load to memory
+	; TODO
+	; load to memory, use RAX for starting sector
+	mov rdi, 0x200000
+	mov rcx, 1		; Loading 4K for now
+	mov rdx, 0
+	call [b_disk_read]
+
 	jmp poll
 
 ; Strings
@@ -772,6 +787,41 @@ string_from_int_next_digit:
 	pop rbx
 	pop rcx
 	pop rdx
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; string_to_int -- Convert a string into a binary integer
+;  IN:	RSI = location of string
+; OUT:	RAX = integer value
+;	All other registers preserved
+; Adapted from http://www.cs.usfca.edu/~cruse/cs210s09/uint2rax.s
+string_to_int:
+	push rsi
+	push rdx
+	push rcx
+	push rbx
+
+	xor eax, eax			; initialize accumulator
+	mov rbx, 10			; decimal-system's radix
+string_to_int_next_digit:
+	mov cl, [rsi]			; fetch next character
+	cmp cl, '0'			; char precedes '0'?
+	jb string_to_int_invalid	; yes, not a numeral
+	cmp cl, '9'			; char follows '9'?
+	ja string_to_int_invalid	; yes, not a numeral
+	mul rbx				; ten times prior sum
+	and rcx, 0x0F			; convert char to int
+	add rax, rcx			; add to prior total
+	inc rsi				; advance source index
+	jmp string_to_int_next_digit	; and check another char
+
+string_to_int_invalid:
+	pop rbx
+	pop rcx
+	pop rdx
+	pop rsi
 	ret
 ; -----------------------------------------------------------------------------
 
