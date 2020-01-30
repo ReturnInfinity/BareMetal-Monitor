@@ -133,15 +133,17 @@ exec:
 	jmp poll
 
 dir:
+	mov rsi, dirmsg
+	call output
 	mov rdi, temp_string
 	mov rsi, rdi
 	mov rax, 1
 	mov rcx, 1
 	mov rdx, 0
-	call [b_disk_read]
+	call [b_disk_read]	; Load the 4K BMFS file table
 	mov rax, 1
 dir_next:
-	cmp byte [rsi], 0
+	cmp byte [rsi], 0	; 0 means we're at the end of the list
 	je dir_end
 
 	push rsi
@@ -149,17 +151,27 @@ dir_next:
 	mov rsi, rdi
 	call string_from_int
 	call output
-	mov rsi, space
+	mov rsi, tab
 	call output
 	add al, 1
 	pop rsi
 
 	call output		; Output file name
+	add rsi, 48
+	push rax
+	mov rax, [rsi]
 	push rsi
+	mov rsi, tab
+	call output
+	mov rdi, temp_string1
+	mov rsi, rdi
+	call string_from_int
+	call output
 	mov rsi, newline
 	call output
 	pop rsi
-	add rsi, 64		; Next entry
+	pop rax
+	add rsi, 16		; Next entry
 	jmp dir_next
 dir_end:
 	jmp poll
@@ -224,6 +236,7 @@ closebracketmsg:	db ']', 0
 space:			db ' ', 0
 newline:		db 13, 0
 tab:			db 9, 0
+dirmsg:			db '#       Name            Size', 13, '-----------------------------', 13, 0
 
 ; Variables
 
@@ -828,8 +841,8 @@ string_to_int_invalid:
 
 %include 'font.inc'
 
-temp_string1: db 0
-temp_string2: db 0
+temp_string1: times 50 db 0
+temp_string2: times 50 db 0
 temp_string: db 0
 
 ; =============================================================================
