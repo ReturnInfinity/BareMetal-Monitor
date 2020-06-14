@@ -131,7 +131,7 @@ poll:
 	call string_compare
 	jc help
 
-	cmp rcx, 0
+	cmp rcx, 0			; If no characters were entered show prompt again
 	je poll
 	mov rsi, message_unknown
 	call output
@@ -235,7 +235,7 @@ prompt:			db '> ', 0
 message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
-message_help:		db 'Available commands:', 13, 'dir, load, exec, ver', 13, 0
+message_help:		db 'Available commands:', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, 0
 command_exec:		db 'exec', 0
 command_dir:		db 'dir', 0
 command_ver:		db 'ver', 0
