@@ -109,6 +109,7 @@ poll:
 	mov rdi, temp_string
 	mov rcx, 100
 	call input
+	; TODO clear leading/trailing spaces to sanitize input
 
 	mov rsi, command_exec
 	call string_compare
@@ -126,6 +127,14 @@ poll:
 	call string_compare
 	jc load
 
+	mov rsi, command_help
+	call string_compare
+	jc help
+
+	cmp rcx, 0
+	je poll
+	mov rsi, message_unknown
+	call output
 	jmp poll
 
 exec:
@@ -140,10 +149,10 @@ dir:
 	mov rax, 1
 	mov rcx, 1
 	mov rdx, 0
-	call [b_disk_read]	; Load the 4K BMFS file table
+	call [b_disk_read]		; Load the 4K BMFS file table
 	mov rax, 1
 dir_next:
-	cmp byte [rsi], 0	; 0 means we're at the end of the list
+	cmp byte [rsi], 0		; 0 means we're at the end of the list
 	je dir_end
 
 	push rsi
@@ -156,7 +165,7 @@ dir_next:
 	add al, 1
 	pop rsi
 
-	call output		; Output file name
+	call output			; Output file name
 	add rsi, 48
 	push rax
 	mov rax, [rsi]
@@ -171,7 +180,7 @@ dir_next:
 	call output
 	pop rsi
 	pop rax
-	add rsi, 16		; Next entry
+	add rsi, 16			; Next entry
 	jmp dir_next
 dir_end:
 	jmp poll
@@ -189,8 +198,8 @@ load:
 	mov rcx, 2
 	call input
 	call string_to_int
-	sub rax, 1		; Files are indexed from 0
-	push rax		; Save the file #
+	sub rax, 1			; Files are indexed from 0
+	push rax			; Save the file #
 	; check value
 	; load file table
 	mov rdi, temp_string
@@ -199,20 +208,25 @@ load:
 	mov rdx, 0
 	call [b_disk_read]
 	; offset to file number and starting sector
-	pop rcx			; Restore the file #
+	pop rcx				; Restore the file #
 	shl rcx, 6
-	add rcx, 32		; Offset to starting block # in BMFS file record
+	add rcx, 32			; Offset to starting block # in BMFS file record
 	add rdi, rcx
 	mov rax, [rdi]
-	shl rax, 9		; Shift left by 9 to convert 2M block to 4K sector
+	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
 	mov rdi, 0x200000
-	mov rcx, 1		; Loading 4K for now
+	mov rcx, 1			; Loading 4K for now
 	mov rdx, 0
 	call [b_disk_read]
 
+	jmp poll
+
+help:
+	mov rsi, message_help
+	call output
 	jmp poll
 
 ; Strings
@@ -220,10 +234,13 @@ load:
 prompt:			db '> ', 0
 message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
+message_unknown:	db 'Unknown command', 13, 0
+message_help:		db 'Available commands:', 13, 'dir, load, exec, ver', 13, 0
 command_exec:		db 'exec', 0
 command_dir:		db 'dir', 0
 command_ver:		db 'ver', 0
 command_load:		db 'load', 0
+command_help:		db 'help', 0
 cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
@@ -274,7 +291,7 @@ input_more:
 	call output_char
 	call dec_cursor
 	call [b_input]
-	jnc input_halt		; No key entered... halt until an interrupt is received
+	jnc input_halt			; No key entered... halt until an interrupt is received
 	cmp al, 0x1C			; If Enter key pressed, finish
 	je input_done
 	cmp al, 0x0E			; Backspace
@@ -284,7 +301,7 @@ input_more:
 	cmp al, 126
 	jg input_more
 	cmp rcx, rdx			; Check if we have reached the max number of chars
-	je input_more		; Jump if we have (should beep as well)
+	je input_more			; Jump if we have (should beep as well)
 	stosb				; Store AL at RDI and increment RDI by 1
 	inc rcx				; Increment the counter
 	call output_char		; Display char
@@ -295,8 +312,8 @@ input_backspace:
 	jz input_more
 	mov al, ' '			; 0x20 is the character for a space
 	call output_char		; Write over the last typed character with the space
-	call dec_cursor		; Decrement the cursor again
-	call dec_cursor		; Decrement the cursor
+	call dec_cursor			; Decrement the cursor again
+	call dec_cursor			; Decrement the cursor
 	dec rdi				; go back one in the string
 	mov byte [rdi], 0x00		; NULL out the char
 	dec rcx				; decrement the counter by one
@@ -375,10 +392,10 @@ output_newline:
 
 	mov word [Screen_Cursor_Col], 0	; Reset column to 0
 	mov ax, [Screen_Rows]		; Grab max rows on screen
-	dec ax					; and subtract 1
-	cmp ax, [Screen_Cursor_Row]		; Is the cursor already on the bottom row?
-	je output_newline_scroll		; If so, then scroll
-	inc word [Screen_Cursor_Row]		; If not, increment the cursor to next row
+	dec ax				; and subtract 1
+	cmp ax, [Screen_Cursor_Row]	; Is the cursor already on the bottom row?
+	je output_newline_scroll	; If so, then scroll
+	inc word [Screen_Cursor_Row]	; If not, increment the cursor to next row
 	jmp output_newline_done
 
 output_newline_scroll:
