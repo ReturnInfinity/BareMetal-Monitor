@@ -2,8 +2,6 @@
 
 A simple command line interface for the BareMetal kernel.
 
-[Discord](https://discord.gg/dT8MgXn) - [Website](https://returninfinity.com)
-
 
 ## Prerequisites
 
