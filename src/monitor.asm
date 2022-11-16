@@ -17,12 +17,14 @@ start:
 	xor edx, edx
 	mov cl, [font_width]
 	div cx
+	sub ax, 2
 	mov [Screen_Cols], ax
 	lodsw				; VIDEO_Y
 	mov [VideoY], ax		; ex: 768
 	xor edx, edx
 	mov cl, [font_height]
 	div cx
+	sub ax, 2
 	mov [Screen_Rows], ax
 	lodsb				; VIDEO_DEPTH
 	mov [VideoDepth], al
@@ -522,6 +524,7 @@ glyph:
 	xor edx, edx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Row]
+	add ax, 1
 	mov cx, 12			; Font height
 	mul cx
 	mov bx, ax
@@ -529,6 +532,7 @@ glyph:
 	xor edx, edx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Col]
+	add ax, 1
 	mov cx, 6			; Font width
 	mul cx
 	mov bx, ax
