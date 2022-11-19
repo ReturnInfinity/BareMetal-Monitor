@@ -151,7 +151,7 @@ dir:
 	mov rax, 1
 	mov rcx, 1
 	mov rdx, 0
-	call [b_disk_read]		; Load the 4K BMFS file table
+	call [b_storage_read]		; Load the 4K BMFS file table
 	mov rax, 1
 dir_next:
 	cmp byte [rsi], 0		; 0 means we're at the end of the list
@@ -208,7 +208,7 @@ load:
 	mov rax, 1
 	mov rcx, 1
 	mov rdx, 0
-	call [b_disk_read]
+	call [b_storage_read]
 	; offset to file number and starting sector
 	pop rcx				; Restore the file #
 	shl rcx, 6
@@ -222,7 +222,7 @@ load:
 	mov rdi, 0x200000
 	mov rcx, 1			; Loading 4K for now
 	mov rdx, 0
-	call [b_disk_read]
+	call [b_storage_read]
 
 	jmp poll
 
