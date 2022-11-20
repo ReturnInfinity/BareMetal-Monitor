@@ -299,6 +299,55 @@ peek_end:
 	jmp poll
 
 poke:
+	cmp byte [args], 3
+	jl insuf
+	jg toomany
+	
+	mov rsi, temp_string
+	call string_length
+	add rsi, 1
+	add rsi, rcx
+	call hex_string_to_int		; RAX holds the address
+	mov rbx, rax			; Save it to RBX
+
+	call string_length
+	add rsi, 1
+	add rsi, rcx
+	call string_length
+	call hex_string_to_int
+	cmp cl, 2
+	je poke_b
+	cmp cl, 4
+	je poke_w
+	cmp cl, 8
+	je poke_d
+	cmp cl, 16
+	je poke_q
+	mov rsi, invalidargs
+	call output
+	jmp poll
+
+poke_b:
+	mov rdi, rbx
+	stosb
+	jmp poke_end
+
+poke_w:
+	mov rdi, rbx
+	stosw
+	jmp poke_end
+
+poke_d:
+	mov rdi, rbx
+	stosd
+	jmp poke_end
+
+poke_q:
+	mov rdi, rbx
+	stosq
+	jmp poke_end
+
+poke_end:
 	jmp poll
 
 help:
@@ -322,7 +371,7 @@ prompt:			db '> ', 0
 message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
-message_help:		db 'Available commands:', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, 0
+message_help:		db 'Available commands:', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, ' peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, ' poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
 command_exec:		db 'exec', 0
 command_dir:		db 'dir', 0
 command_ver:		db 'ver', 0
