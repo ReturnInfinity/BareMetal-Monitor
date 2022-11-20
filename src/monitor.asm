@@ -513,7 +513,16 @@ glyph:
 	push rax
 
 	and eax, 0x000000FF
+	cmp al, 0x20
+	jl hidden
+	cmp al, 127
+	jg hidden
 	sub rax, 0x20
+	jmp load_char
+hidden:
+	mov al, 0
+load_char:
+
 	mov ecx, 12			; Font height
 	mul ecx
 	mov rsi, font_data
