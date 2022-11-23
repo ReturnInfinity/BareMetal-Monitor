@@ -818,14 +818,22 @@ screen_scroll:
 	push rax
 	pushfq
 
-	cld				; Clear the direction flag as we want to increment through memory
+
+	xor eax, eax			; Calculate offset to bottom row
 	xor ecx, ecx
-	xor esi, esi
+	mov ax, [VideoX]
+	mov cl, [font_height]
+	mul ecx				; EAX = EAX * ECX
+	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
+
+	cld				; Clear the direction flag as we want to increment through memory
 	mov rdi, [VideoBase]
 	mov esi, [Screen_Row_2]
 	add rsi, rdi
 	mov ecx, [Screen_Bytes]
-	rep movsb
+	sub ecx, eax			; Subtract the offset
+	shr ecx, 2			; Quick divide by 4
+	rep movsd
 
 screen_scroll_done:
 	popfq
@@ -848,13 +856,11 @@ screen_clear:
 	pushfq
 
 	cld				; Clear the direction flag as we want to increment through memory
-	xor ecx, ecx
 	mov rdi, [VideoBase]
-	xor eax, eax
-	mov al, [BG_Color]		; TODO - needs to use the whole value
+	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
-	add ecx, 100000			; Fudge value for last line.. gross
-	rep stosb
+	shr ecx, 2			; Quick divide by 4
+	rep stosd
 
 screen_clear_done:
 	popfq
