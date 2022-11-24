@@ -125,6 +125,10 @@ poll:
 	call string_compare
 	jc exec
 
+	mov rsi, command_cls
+	call string_compare
+	jc cls
+
 	mov rsi, command_dir
 	call string_compare
 	jc dir
@@ -155,6 +159,10 @@ poll:
 
 exec:
 	call 0x200000
+	jmp poll
+
+cls:
+	call screen_clear
 	jmp poll
 
 dir:
@@ -371,8 +379,9 @@ prompt:			db '> ', 0
 message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
-message_help:		db 'Available commands:', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, ' peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, ' poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
+message_help:		db 'Available commands:', 13, ' cls  - clear the screen', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, ' peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, ' poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
 command_exec:		db 'exec', 0
+command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
 command_ver:		db 'ver', 0
 command_load:		db 'load', 0
