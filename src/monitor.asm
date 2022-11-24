@@ -99,8 +99,34 @@ start:
 	call output
 	mov rsi, mibmsg
 	call output
-	mov rsi, closebracketmsg
+	
+	mov rsi, networkmsg
 	call output
+	mov rax, [0x110050]
+	call dump_al
+	mov rsi, macsep
+	call output
+	shr rax, 8
+	call dump_al
+	mov rsi, macsep
+	call output
+	shr rax, 8
+	call dump_al
+	shr rax, 8
+	mov rsi, macsep
+	call output
+	call dump_al
+	shr rax, 8
+	mov rsi, macsep
+	call output
+	call dump_al
+	shr rax, 8
+	mov rsi, macsep
+	call output
+	call dump_al
+
+	mov rsi, closebracketmsg
+	call output	
 	mov rsi, newline
 	call output
 	call output
@@ -398,6 +424,7 @@ coresmsg:		db ' x ', 0
 namsg:			db 'N/A', 0
 closebracketmsg:	db ']', 0
 space:			db ' ', 0
+macsep:			db ':', 0
 newline:		db 13, 0
 tab:			db 9, 0
 insufargs:		db 'Insufficient argument(s)', 13, 0
