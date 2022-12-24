@@ -16,15 +16,15 @@ start:
 	mov [VideoX], ax		; ex: 1024
 	xor edx, edx
 	mov cl, [font_width]
-	div cx
-	sub ax, 2
+	div cx				; Divide VideoX by font_width
+	sub ax, 2			; Subtract 2 for margin
 	mov [Screen_Cols], ax
 	lodsw				; VIDEO_Y
 	mov [VideoY], ax		; ex: 768
 	xor edx, edx
 	mov cl, [font_height]
-	div cx
-	sub ax, 2
+	div cx				; Divide VideoY by font_height
+	sub ax, 2			; Subtrack 2 for margin
 	mov [Screen_Rows], ax
 	lodsb				; VIDEO_DEPTH
 	mov [VideoDepth], al
@@ -131,6 +131,30 @@ start:
 	call output
 	call output
 
+	; Detect file system
+	mov rax, 0			; First sector
+	mov rcx, 1			; One 4K sector
+	mov rdx, 0			; Drive 0
+	mov rdi, temp_string
+	mov rsi, rdi
+	call [b_storage_read]
+	mov eax, [rsi+1024]
+	cmp eax, 0x53464d42		; "BMFS"
+	je bmfs
+	mov eax, [rsi+0x52]
+	cmp eax, 0x33544146		; "FAT3"
+	je fat
+	jmp poll
+
+bmfs:
+	mov al, 'B'
+	mov [FSType], al
+	jmp poll
+
+fat:
+	mov al, 'F'
+	mov [FSType], al
+
 poll:
 	mov rsi, prompt
 	call output
@@ -192,6 +216,12 @@ cls:
 	jmp poll
 
 dir:
+	mov al, [FSType]
+	cmp al, 0
+	je noFS
+	cmp al, 'F'
+	je dir_fat
+
 	mov rsi, dirmsg
 	call output
 	mov rdi, temp_string
@@ -235,12 +265,20 @@ dir_next:
 dir_end:
 	jmp poll
 
+dir_fat:
+	jmp poll
+
 print_ver:
 	mov rsi, message_ver
 	call output
 	jmp poll
 
 load:
+	mov al, [FSType]
+	cmp al, 0
+	je noFS
+	cmp al, 'F'
+	je load_fat
 	mov rsi, message_load
 	call output
 	mov rdi, temp_string
@@ -271,7 +309,14 @@ load:
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
+	jmp poll
 
+load_fat:
+	jmp poll
+
+noFS:
+	mov rsi, message_noFS
+	call output
 	jmp poll
 
 peek:
@@ -405,6 +450,7 @@ prompt:			db '> ', 0
 message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
+message_noFS:		db 'No filesystem detected', 13, 0
 message_help:		db 'Available commands:', 13, ' cls  - clear the screen', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, ' peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, ' poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
@@ -448,6 +494,8 @@ Screen_Cursor_Row:	dw 0
 Screen_Cursor_Col:	dw 0
 VideoDepth:		db 0
 args:			db 0
+FSType: 		db 0		; File System
+
 
 
 ; -----------------------------------------------------------------------------
@@ -1285,6 +1333,7 @@ hextable: db '0123456789ABCDEF'
 tchar: db 0, 0, 0
 temp_string1: times 50 db 0
 temp_string2: times 50 db 0
+align 4096
 temp_string: db 0
 
 ; =============================================================================
