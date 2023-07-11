@@ -222,6 +222,9 @@ dir:
 	cmp al, 'F'
 	je dir_fat
 
+dir_bmfs:
+	mov rsi, dirmsgbmfs
+	call output
 	mov rsi, dirmsg
 	call output
 	mov rdi, temp_string
@@ -266,6 +269,10 @@ dir_end:
 	jmp poll
 
 dir_fat:
+	mov rsi, dirmsgfat
+	call output
+	mov rsi, dirmsg
+	call output
 	jmp poll
 
 print_ver:
@@ -279,6 +286,8 @@ load:
 	je noFS
 	cmp al, 'F'
 	je load_fat
+
+load_bmfs:
 	mov rsi, message_load
 	call output
 	mov rdi, temp_string
@@ -477,6 +486,8 @@ insufargs:		db 'Insufficient argument(s)', 13, 0
 toomanyargs:		db 'Too many arguments', 13, 0
 invalidargs:		db 'Invalid argument(s)', 13, 0
 dirmsg:			db '#       Name            Size', 13, '-----------------------------', 13, 0
+dirmsgfat:		db 'FAT32', 13, 0
+dirmsgbmfs:		db 'BMFS', 13, 0
 
 ; Variables
 
