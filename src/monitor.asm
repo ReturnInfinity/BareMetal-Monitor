@@ -208,7 +208,7 @@ poll:
 	jmp poll
 
 exec:
-	call 0x200000
+	call 0xFFFF800000000000
 	jmp poll
 
 cls:
@@ -314,7 +314,7 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
-	mov rdi, 0x200000
+	mov rdi, 0xFFFF800000000000
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
