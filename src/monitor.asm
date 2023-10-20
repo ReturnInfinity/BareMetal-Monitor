@@ -208,7 +208,7 @@ poll:
 	jmp poll
 
 exec:
-	call 0xFFFF800000000000
+	call [ProgramLocation]
 	jmp poll
 
 cls:
@@ -314,7 +314,7 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
-	mov rdi, 0xFFFF800000000000
+	mov rdi, [ProgramLocation]
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
@@ -491,6 +491,7 @@ dirmsgbmfs:		db 'BMFS', 13, 0
 
 ; Variables
 
+ProgramLocation:	dq 0xFFFF800000000000
 VideoBase:		dq 0
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
