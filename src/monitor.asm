@@ -54,7 +54,7 @@ start:
 	; Adjust the high memory map to keep 2MiB for the Frame Buffer
 	mov rsi, 0x20000
 	mov rdi, 0x20000
-	mov rcx, 4
+	mov rcx, 4			; 8 MiB
 adjustnext:
 	lodsq				; Load a PDPE
 	add eax, 0x200000		; Add 2MiB to its base address
@@ -62,7 +62,7 @@ adjustnext:
 	dec rcx
 	cmp rcx, 0
 	jne adjustnext
-	mov rcx, 100			; TODO Adjust for stack
+	mov rcx, 4			; 8 MiB TODO Adjust for stack
 	xor eax, eax
 	rep stosq
 
@@ -543,6 +543,7 @@ input:
 input_more:
 	mov al, '_'
 	call output_char
+	call screen_update
 	call dec_cursor
 	call [b_input]
 	jnc input_halt			; No key entered... halt until an interrupt is received
@@ -719,7 +720,7 @@ pixel:
 	mul ecx				; Multiply Y by VideoX
 	and ebx, 0x0000FFFF		; Isolate X co-ordinate
 	add eax, ebx			; Add X
-	mov rdi, [VideoBase]
+	mov rdi, [FrameBuffer]
 
 	cmp byte [VideoDepth], 32
 	je pixel_32
@@ -939,7 +940,7 @@ screen_scroll:
 	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
 
 	cld				; Clear the direction flag as we want to increment through memory
-	mov rdi, [VideoBase]
+	mov rdi, [FrameBuffer]
 	mov esi, [Screen_Row_2]
 	add rsi, rdi
 	mov ecx, [Screen_Bytes]
@@ -967,7 +968,7 @@ screen_clear:
 	push rax
 	pushfq
 
-	cld				; Clear the direction flag as we want to increment through memory
+	cld
 	mov rdi, [FrameBuffer]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
@@ -993,7 +994,7 @@ screen_update:
 	push rcx
 	pushfq
 
-	cld				; Clear the direction flag as we want to increment through memory
+	cld
 	mov rsi, [FrameBuffer]
 	mov rdi, [VideoBase]
 	mov ecx, [Screen_Bytes]
