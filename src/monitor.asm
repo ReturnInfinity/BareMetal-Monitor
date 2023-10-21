@@ -547,6 +547,7 @@ input_more:
 	call dec_cursor
 	call [b_input]
 	jnc input_halt			; No key entered... halt until an interrupt is received
+input_process:
 	cmp al, 0x1C			; If Enter key pressed, finish
 	je input_done
 	cmp al, 0x0E			; Backspace
@@ -575,8 +576,10 @@ input_backspace:
 	jmp input_more
 
 input_halt:
-	hlt				; Halt until another keystroke is received
-	jmp input_more
+	hlt				; Halt until an interrupt is received
+	call [b_input]			; Check if the interrupt was because of a keystroke
+	jnc input_halt			; If not, halt again
+	jmp input_process
 
 input_done:
 	xor al, al
