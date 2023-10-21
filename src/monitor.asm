@@ -51,6 +51,21 @@ start:
 	mul ecx
 	mov dword [Screen_Row_2], eax
 
+	; Adjust the high memory map to keep 2MiB for the Frame Buffer
+	mov rsi, 0x20000
+	mov rdi, 0x20000
+	mov rcx, 4
+adjustnext:
+	lodsq				; Load a PDPE
+	add eax, 0x200000		; Add 2MiB to its base address
+	stosq				; Store it back
+	dec rcx
+	cmp rcx, 0
+	jne adjustnext
+	mov rcx, 100			; TODO Adjust for stack
+	xor eax, eax
+	rep stosq
+
 	; Set foreground/background color
 	mov eax, 0x00FFFFFF
 	mov [FG_Color], eax
@@ -314,7 +329,7 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
-	mov rdi, [ProgramLocation]
+	mov rdi, 0x400000 ;[ProgramLocation]
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
@@ -492,6 +507,7 @@ dirmsgbmfs:		db 'BMFS', 13, 0
 ; Variables
 
 ProgramLocation:	dq 0xFFFF800000000000
+FrameBuffer:		dq 0x0000000000200000
 VideoBase:		dq 0
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
@@ -943,7 +959,7 @@ screen_scroll_done:
 
 ; -----------------------------------------------------------------------------
 ; screen_clear -- Clear the screen
-;  IN:	AL
+;  IN:	Nothing
 ; OUT:	All registers preserved
 screen_clear:
 	push rdi
@@ -952,16 +968,41 @@ screen_clear:
 	pushfq
 
 	cld				; Clear the direction flag as we want to increment through memory
-	mov rdi, [VideoBase]
+	mov rdi, [FrameBuffer]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
 	shr ecx, 2			; Quick divide by 4
 	rep stosd
+	call screen_update
 
-screen_clear_done:
 	popfq
 	pop rax
 	pop rcx
+	pop rdi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; screen_update -- Updates the screen from the frame buffer
+;  IN:	Nothing
+; OUT:	All registers preserved
+screen_update:
+	push rdi
+	push rsi
+	push rcx
+	pushfq
+
+	cld				; Clear the direction flag as we want to increment through memory
+	mov rsi, [FrameBuffer]
+	mov rdi, [VideoBase]
+	mov ecx, [Screen_Bytes]
+	shr ecx, 2			; Quick divide by 4
+	rep movsd
+
+	popfq
+	pop rcx
+	pop rsi
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
