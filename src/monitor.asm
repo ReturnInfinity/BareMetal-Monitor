@@ -51,6 +51,21 @@ start:
 	mul ecx
 	mov dword [Screen_Row_2], eax
 
+	; Adjust the high memory map to keep 2MiB for the Frame Buffer
+	mov rsi, 0x20000
+	mov rdi, 0x20000
+	mov rcx, 4			; 8 MiB
+adjustnext:
+	lodsq				; Load a PDPE
+	add eax, 0x200000		; Add 2MiB to its base address
+	stosq				; Store it back
+	dec rcx
+	cmp rcx, 0
+	jne adjustnext
+	mov rcx, 4			; 8 MiB TODO Adjust for stack
+	xor eax, eax
+	rep stosq
+
 	; Set foreground/background color
 	mov eax, 0x00FFFFFF
 	mov [FG_Color], eax
@@ -208,7 +223,7 @@ poll:
 	jmp poll
 
 exec:
-	call 0x200000
+	call [ProgramLocation]
 	jmp poll
 
 cls:
@@ -314,7 +329,7 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
-	mov rdi, 0x200000
+	mov rdi, 0x400000 ;[ProgramLocation]
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
@@ -460,7 +475,7 @@ message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
 message_noFS:		db 'No filesystem detected', 13, 0
-message_help:		db 'Available commands:', 13, ' cls  - clear the screen', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, ' peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, ' poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
+message_help:		db 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
@@ -491,6 +506,8 @@ dirmsgbmfs:		db 'BMFS', 13, 0
 
 ; Variables
 
+ProgramLocation:	dq 0xFFFF800000000000
+FrameBuffer:		dq 0x0000000000200000
 VideoBase:		dq 0
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
@@ -529,6 +546,7 @@ input_more:
 	call dec_cursor
 	call [b_input]
 	jnc input_halt			; No key entered... halt until an interrupt is received
+input_process:
 	cmp al, 0x1C			; If Enter key pressed, finish
 	je input_done
 	cmp al, 0x0E			; Backspace
@@ -557,8 +575,10 @@ input_backspace:
 	jmp input_more
 
 input_halt:
-	hlt				; Halt until another keystroke is received
-	jmp input_more
+	hlt				; Halt until an interrupt is received
+	call [b_input]			; Check if the interrupt was because of a keystroke
+	jnc input_halt			; If not, halt again
+	jmp input_process
 
 input_done:
 	xor al, al
@@ -702,7 +722,8 @@ pixel:
 	mul ecx				; Multiply Y by VideoX
 	and ebx, 0x0000FFFF		; Isolate X co-ordinate
 	add eax, ebx			; Add X
-	mov rdi, [VideoBase]
+	mov rbx, rax			; Save the offset to RBX
+	mov rdi, [FrameBuffer]
 
 	cmp byte [VideoDepth], 32
 	je pixel_32
@@ -710,20 +731,32 @@ pixel:
 pixel_24:
 	mov ecx, 3
 	mul ecx				; Multiply by 3 as each pixel is 3 bytes
+	mov rbx, rax
 	add rdi, rax			; Add offset to pixel video memory
 	pop rax				; Restore pixel details
+	stosb				; Output pixel to the frame buffer
+	ror eax, 8
 	stosb
-	shr eax, 8
+	ror eax, 8
 	stosb
-	shr eax, 8
+	rol eax, 16
+	mov rdi, [VideoBase]		; Load video memory base
+	add rdi, rbx			; Add offset for pixel location
+	stosb				; Output pixel to the screen
+	ror eax, 8
 	stosb
+	ror eax, 8
+	stosb		
 	jmp pixel_done
 
 pixel_32:
-	shl eax, 2			; Quickly multiply by 4
-	add rdi, rax			; Add offset to pixel video memory
 	pop rax				; Restore pixel details
-	stosd
+	shl ebx, 2			; Quickly multiply by 4
+	add rdi, rbx			; Add offset for pixel location
+	stosd				; Output pixel to the frame buffer
+	mov rdi, [VideoBase]		; Load video memory base
+	add rdi, rbx			; Add offset for pixel location
+	stosd				; Output pixel to the screen
 
 pixel_done:
 	pop rax
@@ -922,7 +955,7 @@ screen_scroll:
 	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
 
 	cld				; Clear the direction flag as we want to increment through memory
-	mov rdi, [VideoBase]
+	mov rdi, [FrameBuffer]
 	mov esi, [Screen_Row_2]
 	add rsi, rdi
 	mov ecx, [Screen_Bytes]
@@ -930,7 +963,8 @@ screen_scroll:
 	shr ecx, 2			; Quick divide by 4
 	rep movsd
 
-screen_scroll_done:
+	call screen_update
+
 	popfq
 	pop rax
 	pop rcx
@@ -942,7 +976,7 @@ screen_scroll_done:
 
 ; -----------------------------------------------------------------------------
 ; screen_clear -- Clear the screen
-;  IN:	AL
+;  IN:	Nothing
 ; OUT:	All registers preserved
 screen_clear:
 	push rdi
@@ -950,17 +984,42 @@ screen_clear:
 	push rax
 	pushfq
 
-	cld				; Clear the direction flag as we want to increment through memory
-	mov rdi, [VideoBase]
+	cld
+	mov rdi, [FrameBuffer]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
 	shr ecx, 2			; Quick divide by 4
 	rep stosd
+	call screen_update
 
-screen_clear_done:
 	popfq
 	pop rax
 	pop rcx
+	pop rdi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; screen_update -- Updates the screen from the frame buffer
+;  IN:	Nothing
+; OUT:	All registers preserved
+screen_update:
+	push rdi
+	push rsi
+	push rcx
+	pushfq
+
+	cld
+	mov rsi, [FrameBuffer]
+	mov rdi, [VideoBase]
+	mov ecx, [Screen_Bytes]
+	shr ecx, 2			; Quick divide by 4
+	rep movsd
+
+	popfq
+	pop rcx
+	pop rsi
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
