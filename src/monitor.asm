@@ -475,7 +475,7 @@ message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
 message_noFS:		db 'No filesystem detected', 13, 0
-message_help:		db 'Available commands:', 13, ' cls  - clear the screen', 13, ' dir  - Show programs currently on disk', 13, ' load - Load a program to memory (you will be prompted for the program number)', 13, ' exec - Run the program currently in memory', 13, ' ver  - Show the system version', 13, ' peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, ' poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
+message_help:		db 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
@@ -543,7 +543,6 @@ input:
 input_more:
 	mov al, '_'
 	call output_char
-	call screen_update
 	call dec_cursor
 	call [b_input]
 	jnc input_halt			; No key entered... halt until an interrupt is received
@@ -723,6 +722,7 @@ pixel:
 	mul ecx				; Multiply Y by VideoX
 	and ebx, 0x0000FFFF		; Isolate X co-ordinate
 	add eax, ebx			; Add X
+	mov rbx, rax			; Save the offset to RBX
 	mov rdi, [FrameBuffer]
 
 	cmp byte [VideoDepth], 32
@@ -731,20 +731,32 @@ pixel:
 pixel_24:
 	mov ecx, 3
 	mul ecx				; Multiply by 3 as each pixel is 3 bytes
+	mov rbx, rax
 	add rdi, rax			; Add offset to pixel video memory
 	pop rax				; Restore pixel details
+	stosb				; Output pixel to the frame buffer
+	ror eax, 8
 	stosb
-	shr eax, 8
+	ror eax, 8
 	stosb
-	shr eax, 8
+	rol eax, 16
+	mov rdi, [VideoBase]		; Load video memory base
+	add rdi, rbx			; Add offset for pixel location
+	stosb				; Output pixel to the screen
+	ror eax, 8
 	stosb
+	ror eax, 8
+	stosb		
 	jmp pixel_done
 
 pixel_32:
-	shl eax, 2			; Quickly multiply by 4
-	add rdi, rax			; Add offset to pixel video memory
 	pop rax				; Restore pixel details
-	stosd
+	shl ebx, 2			; Quickly multiply by 4
+	add rdi, rbx			; Add offset for pixel location
+	stosd				; Output pixel to the frame buffer
+	mov rdi, [VideoBase]		; Load video memory base
+	add rdi, rbx			; Add offset for pixel location
+	stosd				; Output pixel to the screen
 
 pixel_done:
 	pop rax
@@ -951,7 +963,8 @@ screen_scroll:
 	shr ecx, 2			; Quick divide by 4
 	rep movsd
 
-screen_scroll_done:
+	call screen_update
+
 	popfq
 	pop rax
 	pop rcx
