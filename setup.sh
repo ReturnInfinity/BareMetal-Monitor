@@ -4,10 +4,10 @@
 
 mkdir src/api
 cd src/api
-if which curl &> /dev/null; then
+if [ command -v curl >/dev/null 2>&1 ]; then
 	curl -s -o libBareMetal.asm https://raw.githubusercontent.com/ReturnInfinity/BareMetal/master/api/libBareMetal.asm
 else
-	wget https://raw.githubusercontent.com/ReturnInfinity/BareMetal/master/api/libBareMetal.asm
+	wget -q https://raw.githubusercontent.com/ReturnInfinity/BareMetal/master/api/libBareMetal.asm
 fi
 cd ../..
 
