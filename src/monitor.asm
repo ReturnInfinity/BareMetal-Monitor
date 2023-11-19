@@ -329,7 +329,7 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
-	mov rdi, 0x400000 ;[ProgramLocation]
+	mov rdi, [ProgramLocation]
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
@@ -641,30 +641,6 @@ dec_cursor_done:
 
 
 ; -----------------------------------------------------------------------------
-; output_newline -- Reset cursor to start of next line and scroll if needed
-;  IN:	Nothing
-; OUT:	All registers preserved
-output_newline:
-	push rax
-
-	mov word [Screen_Cursor_Col], 0	; Reset column to 0
-	mov ax, [Screen_Rows]		; Grab max rows on screen
-	dec ax				; and subtract 1
-	cmp ax, [Screen_Cursor_Row]	; Is the cursor already on the bottom row?
-	je output_newline_scroll	; If so, then scroll
-	inc word [Screen_Cursor_Row]	; If not, increment the cursor to next row
-	jmp output_newline_done
-
-output_newline_scroll:
-	call screen_scroll
-
-output_newline_done:
-	pop rax
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
 ; output -- Displays text
 ;  IN:	RSI = message location (zero-terminated string)
 ; OUT:	All registers preserved
@@ -675,6 +651,74 @@ output:
 	call output_chars
 
 	pop rcx
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; output_chars -- Displays text
+;  IN:	RSI = message location (an ASCII string, not zero-terminated)
+;	RCX = number of chars to print
+; OUT:	All registers preserved
+output_chars:
+	push rdi
+	push rsi
+	push rcx
+	push rax
+
+output_chars_nextchar:
+	jrcxz output_chars_done
+	dec rcx
+	lodsb				; Get char from string and store in AL
+	cmp al, 13			; Check if there was a newline character in the string
+	je output_chars_newline		; If so then we print a new line
+	cmp al, 10			; Check if there was a newline character in the string
+	je output_chars_newline		; If so then we print a new line
+	cmp al, 9
+	je output_chars_tab
+	call output_char
+	jmp output_chars_nextchar
+
+output_chars_newline:
+	mov al, [rsi]
+	cmp al, 10
+	je output_chars_newline_skip_LF
+	call output_newline
+	jmp output_chars_nextchar
+
+output_chars_newline_skip_LF:
+	test rcx, rcx
+	jz output_chars_newline_skip_LF_nosub
+	dec rcx
+
+output_chars_newline_skip_LF_nosub:
+	inc rsi
+	call output_newline
+	jmp output_chars_nextchar
+
+output_chars_tab:
+	push rcx
+	mov ax, [Screen_Cursor_Col]	; Grab the current cursor X value (ex 7)
+	mov cx, ax
+	add ax, 8			; Add 8 (ex 15)
+	shr ax, 3			; Clear lowest 3 bits (ex 8)
+	shl ax, 3			; Bug? 'xor al, 7' doesn't work...
+	sub ax, cx			; (ex 8 - 7 = 1)
+	mov cx, ax
+	mov al, ' '
+
+output_chars_tab_next:
+	call output_char
+	dec cx
+	jnz output_chars_tab_next
+	pop rcx
+	jmp output_chars_nextchar
+
+output_chars_done:
+	pop rax
+	pop rcx
+	pop rsi
+	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -703,67 +747,25 @@ output_char:
 
 
 ; -----------------------------------------------------------------------------
-; pixel -- Put a pixel on the screen
-;  IN:	EBX = Packed X & Y coordinates (YYYYXXXX)
-;	EAX = Pixel Details (AARRGGBB)
+; output_newline -- Reset cursor to start of next line and scroll if needed
+;  IN:	Nothing
 ; OUT:	All registers preserved
-pixel:
-	push rdi
-	push rdx
-	push rcx
-	push rbx
+output_newline:
 	push rax
 
-	push rax			; Save the pixel details
-	mov rax, rbx
-	shr eax, 16			; Isolate Y co-ordinate
-	xor ecx, ecx
-	mov cx, [VideoX]
-	mul ecx				; Multiply Y by VideoX
-	and ebx, 0x0000FFFF		; Isolate X co-ordinate
-	add eax, ebx			; Add X
-	mov rbx, rax			; Save the offset to RBX
-	mov rdi, [FrameBuffer]
+	mov word [Screen_Cursor_Col], 0	; Reset column to 0
+	mov ax, [Screen_Rows]		; Grab max rows on screen
+	dec ax				; and subtract 1
+	cmp ax, [Screen_Cursor_Row]	; Is the cursor already on the bottom row?
+	je output_newline_scroll	; If so, then scroll
+	inc word [Screen_Cursor_Row]	; If not, increment the cursor to next row
+	jmp output_newline_done
 
-	cmp byte [VideoDepth], 32
-	je pixel_32
+output_newline_scroll:
+	call screen_scroll
 
-pixel_24:
-	mov ecx, 3
-	mul ecx				; Multiply by 3 as each pixel is 3 bytes
-	mov rbx, rax
-	add rdi, rax			; Add offset to pixel video memory
-	pop rax				; Restore pixel details
-	stosb				; Output pixel to the frame buffer
-	ror eax, 8
-	stosb
-	ror eax, 8
-	stosb
-	rol eax, 16
-	mov rdi, [VideoBase]		; Load video memory base
-	add rdi, rbx			; Add offset for pixel location
-	stosb				; Output pixel to the screen
-	ror eax, 8
-	stosb
-	ror eax, 8
-	stosb		
-	jmp pixel_done
-
-pixel_32:
-	pop rax				; Restore pixel details
-	shl ebx, 2			; Quickly multiply by 4
-	add rdi, rbx			; Add offset for pixel location
-	stosd				; Output pixel to the frame buffer
-	mov rdi, [VideoBase]		; Load video memory base
-	add rdi, rbx			; Add offset for pixel location
-	stosd				; Output pixel to the screen
-
-pixel_done:
+output_newline_done:
 	pop rax
-	pop rbx
-	pop rcx
-	pop rdx
-	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -864,72 +866,66 @@ glyph_done:
 
 
 ; -----------------------------------------------------------------------------
-; output_chars -- Displays text
-;  IN:	RSI = message location (an ASCII string, not zero-terminated)
-;	RCX = number of chars to print
+; pixel -- Put a pixel on the screen
+;  IN:	EBX = Packed X & Y coordinates (YYYYXXXX)
+;	EAX = Pixel Details (AARRGGBB)
 ; OUT:	All registers preserved
-output_chars:
+pixel:
 	push rdi
-	push rsi
+	push rdx
 	push rcx
+	push rbx
 	push rax
-	pushfq
 
-	cld				; Clear the direction flag.. we want to increment through the string
+	push rax			; Save the pixel details
+	mov rax, rbx
+	shr eax, 16			; Isolate Y co-ordinate
+	xor ecx, ecx
+	mov cx, [VideoX]
+	mul ecx				; Multiply Y by VideoX
+	and ebx, 0x0000FFFF		; Isolate X co-ordinate
+	add eax, ebx			; Add X
+	mov rbx, rax			; Save the offset to RBX
+	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
 
-output_chars_nextchar:
-	jrcxz output_chars_done
-	dec rcx
-	lodsb				; Get char from string and store in AL
-	cmp al, 13			; Check if there was a newline character in the string
-	je output_chars_newline		; If so then we print a new line
-	cmp al, 10			; Check if there was a newline character in the string
-	je output_chars_newline		; If so then we print a new line
-	cmp al, 9
-	je output_chars_tab
-	call output_char
-	jmp output_chars_nextchar
+	cmp byte [VideoDepth], 32
+	je pixel_32
 
-output_chars_newline:
-	mov al, [rsi]
-	cmp al, 10
-	je output_chars_newline_skip_LF
-	call output_newline
-	jmp output_chars_nextchar
+pixel_24:
+	mov ecx, 3
+	mul ecx				; Multiply by 3 as each pixel is 3 bytes
+	mov rbx, rax
+	add rdi, rax			; Add offset to frame buffer memory
+	pop rax				; Restore pixel details
+	stosb				; Output pixel to the frame buffer
+	ror eax, 8
+	stosb
+	ror eax, 8
+	stosb
+	rol eax, 16
+	mov rdi, [VideoBase]		; Load video memory base
+	add rdi, rbx			; Add offset for pixel location
+	stosb				; Output pixel directly to the screen as well
+	ror eax, 8
+	stosb
+	ror eax, 8
+	stosb		
+	jmp pixel_done
 
-output_chars_newline_skip_LF:
-	test rcx, rcx
-	jz output_chars_newline_skip_LF_nosub
-	dec rcx
+pixel_32:
+	pop rax				; Restore pixel details
+	shl ebx, 2			; Quickly multiply by 4
+	add rdi, rbx			; Add offset to frame buffer memory
+	stosd				; Output pixel to the frame buffer
+	mov rdi, [VideoBase]		; Load video memory base
+	add rdi, rbx			; Add offset for pixel location
+	stosd				; Output pixel directly to the screen as well
 
-output_chars_newline_skip_LF_nosub:
-	inc rsi
-	call output_newline
-	jmp output_chars_nextchar
-
-output_chars_tab:
-	push rcx
-	mov ax, [Screen_Cursor_Col]	; Grab the current cursor X value (ex 7)
-	mov cx, ax
-	add ax, 8			; Add 8 (ex 15)
-	shr ax, 3			; Clear lowest 3 bits (ex 8)
-	shl ax, 3			; Bug? 'xor al, 7' doesn't work...
-	sub ax, cx			; (ex 8 - 7 = 1)
-	mov cx, ax
-	mov al, ' '
-
-output_chars_tab_next:
-	call output_char
-	dec cx
-	jnz output_chars_tab_next
-	pop rcx
-	jmp output_chars_nextchar
-
-output_chars_done:
-	popfq
+pixel_done:
 	pop rax
+	pop rbx
 	pop rcx
-	pop rsi
+	pop rdx
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
@@ -944,8 +940,6 @@ screen_scroll:
 	push rdi
 	push rcx
 	push rax
-	pushfq
-
 
 	xor eax, eax			; Calculate offset to bottom row
 	xor ecx, ecx
@@ -954,7 +948,6 @@ screen_scroll:
 	mul ecx				; EAX = EAX * ECX
 	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
 
-	cld				; Clear the direction flag as we want to increment through memory
 	mov rdi, [FrameBuffer]
 	mov esi, [Screen_Row_2]
 	add rsi, rdi
@@ -965,7 +958,6 @@ screen_scroll:
 
 	call screen_update
 
-	popfq
 	pop rax
 	pop rcx
 	pop rdi
@@ -982,9 +974,7 @@ screen_clear:
 	push rdi
 	push rcx
 	push rax
-	pushfq
 
-	cld
 	mov rdi, [FrameBuffer]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
@@ -992,7 +982,6 @@ screen_clear:
 	rep stosd
 	call screen_update
 
-	popfq
 	pop rax
 	pop rcx
 	pop rdi
@@ -1008,16 +997,13 @@ screen_update:
 	push rdi
 	push rsi
 	push rcx
-	pushfq
 
-	cld
 	mov rsi, [FrameBuffer]
 	mov rdi, [VideoBase]
 	mov ecx, [Screen_Bytes]
 	shr ecx, 2			; Quick divide by 4
 	rep movsd
 
-	popfq
 	pop rcx
 	pop rsi
 	pop rdi
@@ -1038,7 +1024,6 @@ string_length:
 	xor eax, eax
 	mov rdi, rsi
 	not rcx
-	cld
 	repne scasb			; compare byte at RDI to value in AL
 	not rcx
 	dec rcx
@@ -1319,7 +1304,6 @@ hex_string_to_int:
 	push rcx
 	push rbx
 
-	cld
 	xor ebx, ebx
 hex_string_to_int_loop:
 	lodsb
