@@ -5,28 +5,19 @@ ORG 0x001E0000
 
 
 start:
-	; Grab video values from Pure64
-	mov rsi, 0x5080
-	xor eax, eax
-	lodsd				; VIDEO_BASE
+	; Grab screen values from kernel
+	mov rcx, screen_lfb_get
+	call [b_config]
 	mov [VideoBase], rax
 	xor eax, eax
-	xor ecx, ecx
-	lodsw				; VIDEO_X
-	mov [VideoX], ax		; ex: 1024
-	xor edx, edx
-	mov cl, [font_width]
-	div cx				; Divide VideoX by font_width
-	sub ax, 2			; Subtract 2 for margin
-	mov [Screen_Cols], ax
-	lodsw				; VIDEO_Y
-	mov [VideoY], ax		; ex: 768
-	xor edx, edx
-	mov cl, [font_height]
-	div cx				; Divide VideoY by font_height
-	sub ax, 2			; Subtrack 2 for margin
-	mov [Screen_Rows], ax
-	lodsb				; VIDEO_DEPTH
+	mov rcx, screen_x_get
+	call [b_config]
+	mov [VideoX], ax
+	mov rcx, screen_y_get
+	call [b_config]
+	mov [VideoY], ax
+	mov rcx, screen_bpp_get
+	call [b_config]
 	mov [VideoDepth], al
 
 	; Calculate screen parameters
@@ -41,6 +32,8 @@ start:
 	shr cl, 3
 	mul ecx
 	mov [Screen_Bytes], eax
+
+	; Calculate font parameters
 	xor eax, eax
 	xor ecx, ecx
 	mov ax, [VideoX]
@@ -50,6 +43,22 @@ start:
 	shr cl, 3
 	mul ecx
 	mov dword [Screen_Row_2], eax
+	xor eax, eax
+	xor edx, edx
+	xor ecx, ecx
+	mov ax, [VideoX]
+	mov cl, [font_width]
+	div cx				; Divide VideoX by font_width
+	sub ax, 2			; Subtract 2 for margin
+	mov [Screen_Cols], ax
+	xor eax, eax
+	xor edx, edx
+	xor ecx, ecx
+	mov ax, [VideoY]
+	mov cl, [font_height]
+	div cx				; Divide VideoY by font_height
+	sub ax, 2			; Subtrack 2 for margin
+	mov [Screen_Rows], ax
 
 	; Adjust the high memory map to keep 2MiB for the Frame Buffer
 	mov rsi, 0x20000
@@ -117,7 +126,7 @@ adjustnext:
 	
 	mov rsi, networkmsg
 	call output
-	mov rax, [0x110050]
+	mov rax, [0x110048]
 	call dump_al
 	mov rsi, macsep
 	call output
