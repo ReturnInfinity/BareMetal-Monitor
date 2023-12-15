@@ -94,6 +94,8 @@ adjustnext:
 	mov [Screen_Cursor_Row], ax
 
 	; Output system details
+
+	; Output core count and speed
 	mov rsi, cpumsg
 	call output
 	xor eax, eax
@@ -113,6 +115,8 @@ adjustnext:
 	call output
 	mov rsi, mhzmsg
 	call output
+
+	; Output memory size
 	mov rsi, memmsg
 	call output
 	mov rsi, 0x5020
@@ -123,34 +127,26 @@ adjustnext:
 	call output
 	mov rsi, mibmsg
 	call output
-	
+
+	; Output MAC address
 	mov rsi, networkmsg
 	call output
-	mov rax, [0x110048]
+	mov rcx, mac_get
+	call [b_config]
+	ror rax, 40
+	mov ecx, 5			; Display the first 5 with separators after
+nextMAC:
 	call dump_al
 	mov rsi, macsep
 	call output
-	shr rax, 8
-	call dump_al
-	mov rsi, macsep
-	call output
-	shr rax, 8
-	call dump_al
-	shr rax, 8
-	mov rsi, macsep
-	call output
-	call dump_al
-	shr rax, 8
-	mov rsi, macsep
-	call output
-	call dump_al
-	shr rax, 8
-	mov rsi, macsep
-	call output
-	call dump_al
-
+	rol rax, 8
+	sub ecx, 1
+	test ecx, ecx
+	jnz nextMAC
+	call dump_al			; Display the last
 	mov rsi, closebracketmsg
-	call output	
+	call output
+
 	mov rsi, newline
 	call output
 	call output
