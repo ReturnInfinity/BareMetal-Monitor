@@ -151,6 +151,11 @@ nextMAC:
 	call output
 	call output
 
+	; Write a 'ret' opcode to the start of program memory
+	mov rdi, [ProgramLocation]
+	mov al, 0xc3			; 'ret' opcode
+	stosb
+
 	; Detect file system
 	mov rax, 0			; First sector
 	mov rcx, 1			; One 4K sector
@@ -327,8 +332,11 @@ load_bmfs:
 	; offset to file number and starting sector
 	pop rcx				; Restore the file #
 	shl rcx, 6
-	add rcx, 32			; Offset to starting block # in BMFS file record
-	add rdi, rcx
+	add rdi, rcx			; RDI points to start of BMFS entry
+	mov al, [rdi]			; Load first character of file name
+	cmp al, 1			; 0x00 or 0x01 are invalid
+	jle load_notfound
+	add rdi, 32			; Offset to starting block # in BMFS file record
 	mov rax, [rdi]
 	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
 	; size
@@ -341,6 +349,11 @@ load_bmfs:
 	jmp poll
 
 load_fat:
+	jmp poll
+
+load_notfound:
+	mov rsi, invalidargs
+	call output
 	jmp poll
 
 noFS:
