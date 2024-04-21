@@ -158,6 +158,7 @@ nextMAC:
 
 	; Detect file system
 	mov rax, 0			; First sector
+	add rax, 32768
 	mov rcx, 1			; One 4K sector
 	mov rdx, 0			; Drive 0
 	mov rdi, temp_string
@@ -255,6 +256,7 @@ dir_bmfs:
 	mov rdi, temp_string
 	mov rsi, rdi
 	mov rax, 1
+	add rax, 32768
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]		; Load the 4K BMFS file table
@@ -326,6 +328,7 @@ load_bmfs:
 	; load file table
 	mov rdi, temp_string
 	mov rax, 1
+	add rax, 32768
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]
@@ -342,6 +345,7 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
+	add rax, 32768
 	mov rdi, [ProgramLocation]
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
@@ -527,6 +531,7 @@ dirmsgbmfs:		db 'BMFS', 13, 0
 ProgramLocation:	dq 0xFFFF800000000000
 FrameBuffer:		dq 0x0000000000200000
 VideoBase:		dq 0
+UEFI_Offset:		dq 32768
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
 Screen_Row_2:		dd 0
