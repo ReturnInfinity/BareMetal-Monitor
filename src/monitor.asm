@@ -904,6 +904,29 @@ pixel:
 	push rbx
 	push rax
 
+	push rbx
+	push rax
+
+	; Calculate offset in frame buffer and store pixel
+	push rax			; Save the pixel details
+	mov rax, rbx
+	shr eax, 16			; Isolate Y co-ordinate
+	xor ecx, ecx
+	mov cx, [VideoX]
+	mul ecx				; Multiply Y by VideoX
+	and ebx, 0x0000FFFF		; Isolate X co-ordinate
+	add eax, ebx			; Add X
+	mov rbx, rax			; Save the offset to RBX
+	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
+	pop rax				; Restore pixel details
+	shl ebx, 2			; Quickly multiply by 4
+	add rdi, rbx			; Add offset to frame buffer memory
+	stosd				; Output pixel to the frame buffer
+
+	pop rax
+	pop rbx
+
+	; Calculate offset in video memory and store pixel
 	push rax			; Save the pixel details
 	mov rax, rbx
 	shr eax, 16			; Isolate Y co-ordinate
@@ -913,42 +936,12 @@ pixel:
 	and ebx, 0x0000FFFF		; Isolate X co-ordinate
 	add eax, ebx			; Add X
 	mov rbx, rax			; Save the offset to RBX
-	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
-
-;	cmp byte [VideoDepth], 32
-;	je pixel_32
-;
-;pixel_24:
-;	mov ecx, 3
-;	mul ecx				; Multiply by 3 as each pixel is 3 bytes
-;	mov rbx, rax
-;	add rdi, rax			; Add offset to frame buffer memory
-;	pop rax				; Restore pixel details
-;	stosb				; Output pixel to the frame buffer
-;	ror eax, 8
-;	stosb
-;	ror eax, 8
-;	stosb
-;	rol eax, 16
-;	mov rdi, [VideoBase]		; Load video memory base
-;	add rdi, rbx			; Add offset for pixel location
-;	stosb				; Output pixel directly to the screen as well
-;	ror eax, 8
-;	stosb
-;	ror eax, 8
-;	stosb		
-;	jmp pixel_done
-
-pixel_32:
+	mov rdi, [VideoBase]		; Store the pixel to video memory
 	pop rax				; Restore pixel details
 	shl ebx, 2			; Quickly multiply by 4
-	add rdi, rbx			; Add offset to frame buffer memory
-	stosd				; Output pixel to the frame buffer
-	mov rdi, [VideoBase]		; Load video memory base
-	add rdi, rbx			; Add offset for pixel location
-	stosd				; Output pixel directly to the screen as well
+	add rdi, rbx			; Add offset in video memory
+	stosd				; Output pixel to video memory
 
-pixel_done:
 	pop rax
 	pop rbx
 	pop rcx
@@ -1039,8 +1032,10 @@ screen_update_line:
 	jz screen_update_done
 	xor ecx, ecx
 	mov cx, [VideoX]
+	shl ecx, 2			; Quick multiply by 4
 	sub rdi, rcx
 	mov ecx, [VideoPPSL]
+	shl ecx, 2			; Quick multiply by 4
 	add rdi, rcx
 	jmp screen_update_line
 
