@@ -16,6 +16,9 @@ start:
 	mov rcx, screen_y_get
 	call [b_config]
 	mov [VideoY], ax
+	mov rcx, screen_ppsl_get
+	call [b_config]
+	mov [VideoPPSL], eax
 	mov rcx, screen_bpp_get
 	call [b_config]
 	mov [VideoDepth], al
@@ -537,6 +540,7 @@ Screen_Bytes:		dd 0
 Screen_Row_2:		dd 0
 FG_Color:		dd 0
 BG_Color:		dd 0
+VideoPPSL:		dd 0
 VideoX:			dw 0
 VideoY:			dw 0
 Screen_Rows:		dw 0
@@ -904,36 +908,36 @@ pixel:
 	mov rax, rbx
 	shr eax, 16			; Isolate Y co-ordinate
 	xor ecx, ecx
-	mov cx, [VideoX]
-	mul ecx				; Multiply Y by VideoX
+	mov cx, [VideoPPSL]
+	mul ecx				; Multiply Y by VideoPPSL
 	and ebx, 0x0000FFFF		; Isolate X co-ordinate
 	add eax, ebx			; Add X
 	mov rbx, rax			; Save the offset to RBX
 	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
 
-	cmp byte [VideoDepth], 32
-	je pixel_32
-
-pixel_24:
-	mov ecx, 3
-	mul ecx				; Multiply by 3 as each pixel is 3 bytes
-	mov rbx, rax
-	add rdi, rax			; Add offset to frame buffer memory
-	pop rax				; Restore pixel details
-	stosb				; Output pixel to the frame buffer
-	ror eax, 8
-	stosb
-	ror eax, 8
-	stosb
-	rol eax, 16
-	mov rdi, [VideoBase]		; Load video memory base
-	add rdi, rbx			; Add offset for pixel location
-	stosb				; Output pixel directly to the screen as well
-	ror eax, 8
-	stosb
-	ror eax, 8
-	stosb		
-	jmp pixel_done
+;	cmp byte [VideoDepth], 32
+;	je pixel_32
+;
+;pixel_24:
+;	mov ecx, 3
+;	mul ecx				; Multiply by 3 as each pixel is 3 bytes
+;	mov rbx, rax
+;	add rdi, rax			; Add offset to frame buffer memory
+;	pop rax				; Restore pixel details
+;	stosb				; Output pixel to the frame buffer
+;	ror eax, 8
+;	stosb
+;	ror eax, 8
+;	stosb
+;	rol eax, 16
+;	mov rdi, [VideoBase]		; Load video memory base
+;	add rdi, rbx			; Add offset for pixel location
+;	stosb				; Output pixel directly to the screen as well
+;	ror eax, 8
+;	stosb
+;	ror eax, 8
+;	stosb		
+;	jmp pixel_done
 
 pixel_32:
 	pop rax				; Restore pixel details
@@ -1019,16 +1023,31 @@ screen_clear:
 screen_update:
 	push rdi
 	push rsi
+	push rdx
 	push rcx
 
 	mov rsi, [FrameBuffer]
 	mov rdi, [VideoBase]
-	mov ecx, [Screen_Bytes]
-	shr ecx, 2			; Quick divide by 4
-	rep movsd
+	xor edx, edx
+	mov dx, [VideoY]
 
+screen_update_line:
+	xor ecx, ecx
+	mov cx, [VideoX]
+	rep movsd			; Only copy visible pixels
+	dec edx
+	jz screen_update_done
+	xor ecx, ecx
+	mov cx, [VideoX]
+	sub rdi, rcx
+	mov ecx, [VideoPPSL]
+	add rdi, rcx
+	jmp screen_update_line
+
+screen_update_done:
 	pop rcx
 	pop rsi
+	pop rdx
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
