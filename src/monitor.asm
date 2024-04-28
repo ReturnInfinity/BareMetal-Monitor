@@ -286,7 +286,7 @@ load_bmfs:
 	; load file table
 	mov rdi, temp_string
 	mov rax, 1
-	add rax, 32768
+	add rax, [UEFI_Disk_Offset]
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]
