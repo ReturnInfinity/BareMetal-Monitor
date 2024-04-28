@@ -19,9 +19,6 @@ start:
 	mov rcx, screen_ppsl_get
 	call [b_config]
 	mov [VideoPPSL], eax
-	mov rcx, screen_bpp_get
-	call [b_config]
-	mov [VideoDepth], al
 
 	; Calculate screen parameters
 	xor eax, eax
@@ -30,9 +27,7 @@ start:
 	mov cx, [VideoY]
 	mul ecx
 	mov [Screen_Pixels], eax
-	xor ecx, ecx
-	mov cl, [VideoDepth]
-	shr cl, 3
+	mov ecx, 4
 	mul ecx
 	mov [Screen_Bytes], eax
 
@@ -42,8 +37,7 @@ start:
 	mov ax, [VideoX]
 	mov cl, [font_height]
 	mul cx
-	mov cl, [VideoDepth]
-	shr cl, 3
+	mov ecx, 4
 	mul ecx
 	mov dword [Screen_Row_2], eax
 	xor eax, eax
@@ -62,27 +56,6 @@ start:
 	div cx				; Divide VideoY by font_height
 	sub ax, 2			; Subtrack 2 for margin
 	mov [Screen_Rows], ax
-
-	; Adjust the high memory map to keep 2MiB for the Frame Buffer
-	mov rsi, 0x20000
-	mov rdi, 0x20000
-	mov rcx, 4			; 8 MiB
-adjustnext:
-	lodsq				; Load a PDPE
-	add eax, 0x200000		; Add 2MiB to its base address
-	stosq				; Store it back
-	dec rcx
-	cmp rcx, 0
-	jne adjustnext
-	mov rcx, 4			; 8 MiB TODO Adjust for stack
-	xor eax, eax
-	rep stosq
-
-	; Set foreground/background color
-	mov eax, 0x00FFFFFF
-	mov [FG_Color], eax
-	mov eax, 0x00404040
-	mov [BG_Color], eax
 
 	call screen_clear
 
@@ -170,19 +143,12 @@ nextMAC:
 	mov eax, [rsi+1024]
 	cmp eax, 0x53464d42		; "BMFS"
 	je bmfs
-	mov eax, [rsi+0x52]
-	cmp eax, 0x33544146		; "FAT3"
-	je fat
 	jmp poll
 
 bmfs:
 	mov al, 'B'
 	mov [FSType], al
 	jmp poll
-
-fat:
-	mov al, 'F'
-	mov [FSType], al
 
 poll:
 	mov rsi, prompt
@@ -248,8 +214,6 @@ dir:
 	mov al, [FSType]
 	cmp al, 0
 	je noFS
-	cmp al, 'F'
-	je dir_fat
 
 dir_bmfs:
 	mov rsi, dirmsgbmfs
@@ -259,7 +223,7 @@ dir_bmfs:
 	mov rdi, temp_string
 	mov rsi, rdi
 	mov rax, 1
-	add rax, 32768
+	add rax, [UEFI_Disk_Offset]
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]		; Load the 4K BMFS file table
@@ -298,13 +262,6 @@ dir_next:
 dir_end:
 	jmp poll
 
-dir_fat:
-	mov rsi, dirmsgfat
-	call output
-	mov rsi, dirmsg
-	call output
-	jmp poll
-
 print_ver:
 	mov rsi, message_ver
 	call output
@@ -314,8 +271,6 @@ load:
 	mov al, [FSType]
 	cmp al, 0
 	je noFS
-	cmp al, 'F'
-	je load_fat
 
 load_bmfs:
 	mov rsi, message_load
@@ -348,14 +303,11 @@ load_bmfs:
 	; size
 	; TODO
 	; load to memory, use RAX for starting sector
-	add rax, 32768
+	add rax, [UEFI_Disk_Offset]
 	mov rdi, [ProgramLocation]
 	mov rcx, 16			; Loading 64K for now
 	mov rdx, 0
 	call [b_storage_read]
-	jmp poll
-
-load_fat:
 	jmp poll
 
 load_notfound:
@@ -377,7 +329,6 @@ peek:
 	call string_length
 	add rsi, 1
 	add rsi, rcx
-	;call output
 	call hex_string_to_int		; RAX holds the address
 	mov rbx, rax			; Save it to RBX
 
@@ -526,20 +477,19 @@ insufargs:		db 'Insufficient argument(s)', 13, 0
 toomanyargs:		db 'Too many arguments', 13, 0
 invalidargs:		db 'Invalid argument(s)', 13, 0
 dirmsg:			db '#       Name            Size', 13, '-----------------------------', 13, 0
-dirmsgfat:		db 'FAT32', 13, 0
 dirmsgbmfs:		db 'BMFS', 13, 0
 
 ; Variables
+align 16
 
 ProgramLocation:	dq 0xFFFF800000000000
-FrameBuffer:		dq 0x0000000000200000
 VideoBase:		dq 0
-UEFI_Offset:		dq 32768
+UEFI_Disk_Offset:	dq 32768
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
 Screen_Row_2:		dd 0
-FG_Color:		dd 0
-BG_Color:		dd 0
+FG_Color:		dd 0x00FFFFFF
+BG_Color:		dd 0x00404040
 VideoPPSL:		dd 0
 VideoX:			dw 0
 VideoY:			dw 0
@@ -547,7 +497,6 @@ Screen_Rows:		dw 0
 Screen_Cols:		dw 0
 Screen_Cursor_Row:	dw 0
 Screen_Cursor_Col:	dw 0
-VideoDepth:		db 0
 args:			db 0
 FSType: 		db 0		; File System
 
@@ -904,28 +853,6 @@ pixel:
 	push rbx
 	push rax
 
-	push rbx
-	push rax
-
-	; Calculate offset in frame buffer and store pixel
-	push rax			; Save the pixel details
-	mov rax, rbx
-	shr eax, 16			; Isolate Y co-ordinate
-	xor ecx, ecx
-	mov cx, [VideoX]
-	mul ecx				; Multiply Y by VideoX
-	and ebx, 0x0000FFFF		; Isolate X co-ordinate
-	add eax, ebx			; Add X
-	mov rbx, rax			; Save the offset to RBX
-	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
-	pop rax				; Restore pixel details
-	shl ebx, 2			; Quickly multiply by 4
-	add rdi, rbx			; Add offset to frame buffer memory
-	stosd				; Output pixel to the frame buffer
-
-	pop rax
-	pop rbx
-
 	; Calculate offset in video memory and store pixel
 	push rax			; Save the pixel details
 	mov rax, rbx
@@ -968,15 +895,13 @@ screen_scroll:
 	mul ecx				; EAX = EAX * ECX
 	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
 
-	mov rdi, [FrameBuffer]
+	mov rdi, [VideoBase]
 	mov esi, [Screen_Row_2]
 	add rsi, rdi
 	mov ecx, [Screen_Bytes]
 	sub ecx, eax			; Subtract the offset
 	shr ecx, 2			; Quick divide by 4
 	rep movsd
-
-	call screen_update
 
 	pop rax
 	pop rcx
@@ -995,54 +920,14 @@ screen_clear:
 	push rcx
 	push rax
 
-	mov rdi, [FrameBuffer]
+	mov rdi, [VideoBase]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
 	shr ecx, 2			; Quick divide by 4
 	rep stosd
-	call screen_update
 
 	pop rax
 	pop rcx
-	pop rdi
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; screen_update -- Updates the screen from the frame buffer
-;  IN:	Nothing
-; OUT:	All registers preserved
-screen_update:
-	push rdi
-	push rsi
-	push rdx
-	push rcx
-
-	mov rsi, [FrameBuffer]
-	mov rdi, [VideoBase]
-	xor edx, edx
-	mov dx, [VideoY]
-
-screen_update_line:
-	xor ecx, ecx
-	mov cx, [VideoX]
-	rep movsd			; Only copy visible pixels
-	dec edx
-	jz screen_update_done
-	xor ecx, ecx
-	mov cx, [VideoX]
-	shl ecx, 2			; Quick multiply by 4
-	sub rdi, rcx
-	mov ecx, [VideoPPSL]
-	shl ecx, 2			; Quick multiply by 4
-	add rdi, rcx
-	jmp screen_update_line
-
-screen_update_done:
-	pop rcx
-	pop rsi
-	pop rdx
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
