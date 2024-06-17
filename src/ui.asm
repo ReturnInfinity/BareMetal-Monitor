@@ -92,8 +92,8 @@ ui_input_more:
 	mov al, '_'
 	call output_char
 	call dec_cursor
-	call [b_input]
-	jnc ui_input_halt		; No key entered... halt until an interrupt is received
+	call [b_input]			; Returns the character entered. 0 if there was none
+	jz ui_input_halt		; If there was no character then halt until an interrupt is received
 ui_input_process:
 	cmp al, 0x1C			; If Enter key pressed, finish
 	je ui_input_done
@@ -125,7 +125,7 @@ ui_input_backspace:
 ui_input_halt:
 	hlt				; Halt until an interrupt is received
 	call [b_input]			; Check if the interrupt was because of a keystroke
-	jnc ui_input_halt		; If not, halt again
+	jz ui_input_halt		; If not, halt again
 	jmp ui_input_process
 
 ui_input_done:
