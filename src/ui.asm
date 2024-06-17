@@ -89,9 +89,11 @@ ui_input:
 	xor ecx, ecx			; Offset from start
 
 ui_input_more:
-	mov al, '_'
-	call output_char
-	call dec_cursor
+	mov al, '_'			; Cursor character
+	call output_char		; Output the cursor
+	call dec_cursor			; Set the cursor back by 1
+ui_input_halt:
+	hlt				; Halt until an interrupt is received
 	call [b_input]			; Returns the character entered. 0 if there was none
 	jz ui_input_halt		; If there was no character then halt until an interrupt is received
 ui_input_process:
@@ -121,12 +123,6 @@ ui_input_backspace:
 	mov byte [rdi], 0x00		; NULL out the char
 	dec rcx				; decrement the counter by one
 	jmp ui_input_more
-
-ui_input_halt:
-	hlt				; Halt until an interrupt is received
-	call [b_input]			; Check if the interrupt was because of a keystroke
-	jz ui_input_halt		; If not, halt again
-	jmp ui_input_process
 
 ui_input_done:
 	xor al, al
