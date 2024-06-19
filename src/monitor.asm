@@ -116,6 +116,10 @@ poll:
 	call string_compare
 	jc dir
 
+	mov rsi, command_dump
+	call string_compare
+	jc dump
+
 	mov rsi, command_ver
 	call string_compare
 	jc print_ver
@@ -265,11 +269,119 @@ noFS:
 	call ui_output
 	jmp poll
 
+dump:
+	cmp byte [args], 4
+	jl insuf
+	jg toomany
+
+	; Parse the starting memory address
+	mov rsi, temp_string
+	call string_length
+	add rsi, 1
+	add rsi, rcx
+	call hex_string_to_int		; RAX holds the address
+	mov r8, rax			; Save it to RBX
+
+	; Parse the number of values to display
+	call string_length
+	add rsi, 1
+	add rsi, rcx
+	call hex_string_to_int
+	mov r9, rax
+
+	; Parse the size of each value to display
+	call string_length
+	add rsi, 1
+	add rsi, rcx
+	call hex_string_to_int
+
+	mov rsi, r8
+	mov rcx, r9
+
+	cmp al, 1
+	je dump_b
+	cmp al, 2
+	je dump_w
+	cmp al, 4
+	je dump_d
+	cmp al, 8
+	je dump_q
+	mov rsi, invalidargs
+	call ui_output
+	jmp poll
+
+dump_b:
+	lodsb
+	call dump_al
+	push rsi
+	mov rsi, space
+	call ui_output
+	pop rsi
+	dec rcx
+	jnz dump_b
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
+	jmp dump_end
+
+dump_w:
+	lodsw
+	call dump_ax
+	push rsi
+	mov rsi, space
+	call ui_output
+	pop rsi
+	dec rcx
+	jnz dump_w
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
+	jmp dump_end
+
+dump_d:
+	mov rax, rsi
+	call dump_rax
+	push rsi
+	mov rsi, dumpsep
+	call ui_output
+	pop rsi
+	lodsd
+	call dump_eax
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
+	dec rcx
+	jnz dump_d
+	jmp dump_end
+
+dump_q:
+	mov rax, rsi
+	call dump_rax
+	push rsi
+	mov rsi, dumpsep
+	call ui_output
+	pop rsi
+	lodsq
+	call dump_rax
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
+	dec rcx
+	jnz dump_q
+	jmp dump_end
+
+dump_end:
+	jmp poll
+
 peek:
 	cmp byte [args], 3
 	jl insuf
 	jg toomany
-	
+
 	mov rsi, temp_string
 	call string_length
 	add rsi, 1
@@ -747,10 +859,11 @@ message_ver:		db '1.0', 13, 0
 message_load:		db 'Enter file number: ', 0
 message_unknown:	db 'Unknown command', 13, 0
 message_noFS:		db 'No filesystem detected', 13, 0
-message_help:		db 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 0
+message_help:		db 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 13, 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
+command_dump:		db 'dump', 0
 command_ver:		db 'ver', 0
 command_load:		db 'load', 0
 command_peek:		db 'peek', 0
@@ -768,6 +881,7 @@ namsg:			db 'N/A', 0
 closebracketmsg:	db ']', 0
 space:			db ' ', 0
 macsep:			db ':', 0
+dumpsep:		db ': ', 0
 newline:		db 13, 0
 tab:			db 9, 0
 insufargs:		db 'Insufficient argument(s)', 13, 0
