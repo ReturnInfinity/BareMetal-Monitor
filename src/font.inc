@@ -1,6 +1,11 @@
+; =============================================================================
 ; BareMetal Monitor Default Font
+; Copyright (C) 2008-2024 Return Infinity -- see LICENSE.TXT
+;
 ; Fonts are defined in HxW (Pixel height x Pixel width)
 ; 12x6 padded to 12x8
+; =============================================================================
+
 
 font_height: db 12
 font_width: db 6

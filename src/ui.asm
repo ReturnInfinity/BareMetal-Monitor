@@ -1,3 +1,15 @@
+; =============================================================================
+; BareMetal Monitor UI
+; Copyright (C) 2008-2024 Return Infinity -- see LICENSE.TXT
+;
+; This file contains all of the functions needed for displaying a text UI in
+; the graphics mode configured by the OS loader.
+;
+; ui_init needs to be called first as it gathers the relevant details for the
+; screen and font.
+; =============================================================================
+
+
 BITS 64
 
 
@@ -6,6 +18,10 @@ BITS 64
 ;  IN:	Nothing
 ; OUT:	Nothing
 ui_init:
+	push rdx
+	push rcx
+	push rax
+
 	; Grab screen values from kernel
 	mov rcx, screen_lfb_get
 	call [b_config]
@@ -62,14 +78,16 @@ ui_init:
 
 	; Overwrite the kernel b_output function so output goes to the screen instead of the serial port
 	mov rax, output_chars
-	mov rdi, 0x100018
-	stosq
+	mov [0x100018], rax
 
 	; Move cursor to bottom of screen
 	mov ax, [Screen_Rows]
 	dec ax
 	mov [Screen_Cursor_Row], ax
 
+	pop rax
+	pop rcx
+	pop rdx
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -204,7 +222,6 @@ dec_cursor_done:
 ;	RCX = number of chars to print
 ; OUT:	All registers preserved
 output_chars:
-	push rdi
 	push rsi
 	push rcx
 	push rax
@@ -261,7 +278,6 @@ output_chars_done:
 	pop rax
 	pop rcx
 	pop rsi
-	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -271,20 +287,8 @@ output_chars_done:
 ;  IN:	AL  = char to display
 ; OUT:	All registers preserved
 output_char:
-	push rdi
-	push rdx
-	push rcx
-	push rbx
-	push rax
-
 	call glyph
 	call inc_cursor
-
-	pop rax
-	pop rbx
-	pop rcx
-	pop rdx
-	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -318,7 +322,6 @@ output_newline_done:
 ;  IN:	AL  = char to display
 ; OUT:	All registers preserved
 glyph:
-	push rdi
 	push rsi
 	push rdx
 	push rcx
@@ -403,7 +406,6 @@ glyph_done:
 	pop rcx
 	pop rdx
 	pop rsi
-	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
