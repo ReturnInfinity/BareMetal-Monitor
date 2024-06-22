@@ -157,6 +157,17 @@ poll:
 	jmp poll
 
 testzone:
+	xor eax, eax			; Zero RAX for the packet counter
+	mov [0x1e8000], rax		; Store it to a temp location
+tst_loop:
+	call [b_input]			; Check if there was a key pressed
+	jnz poll			; If so, jmp to the main loop
+	mov rdi, temp_string		; Temp location to store the packet
+	call [b_net_rx]			; Returns bytes received in RCX, Zero flag set on no bytes
+	jz tst_loop_nodata		; In nothing was received skip incrementing the counter
+	add qword [0x1e8000], 1		; Increment the packet counter
+tst_loop_nodata:
+	jmp tst_loop
 	jmp poll
 
 exec:
@@ -863,7 +874,7 @@ hextable:		db '0123456789ABCDEF'
 ; Strings
 
 prompt:			db 13, '> ', 0
-message_ver:		db '1.0', 13, 0
+message_ver:		db 13, '1.0', 0
 message_load:		db 13, 'Enter file number: ', 0
 message_unknown:	db 13, 'Unknown command', 0
 message_noFS:		db 13, 'No filesystem detected', 0
@@ -892,9 +903,9 @@ macsep:			db ':', 0
 dumpsep:		db ': ', 0
 newline:		db 13, 0
 tab:			db 9, 0
-insufargs:		db 'Insufficient argument(s)', 13, 0
-toomanyargs:		db 'Too many arguments', 13, 0
-invalidargs:		db 'Invalid argument(s)', 13, 0
+insufargs:		db 13, 'Insufficient argument(s)', 0
+toomanyargs:		db 13, 'Too many arguments', 0
+invalidargs:		db 13, 'Invalid argument(s)', 0
 dirmsg:			db 13, '#       Name            Size', 13, '-----------------------------', 0
 dirmsgbmfs:		db 13, 'BMFS', 0
 
