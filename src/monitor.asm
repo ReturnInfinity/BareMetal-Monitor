@@ -72,7 +72,6 @@ nextMAC:
 
 	mov rsi, newline
 	call ui_output
-	call ui_output
 
 	; Write a 'ret' opcode to the start of program memory
 	mov rdi, [ProgramLocation]
