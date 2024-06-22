@@ -128,8 +128,7 @@ ui_input_done:
 	xor al, al
 	stosb				; We NULL terminate the string
 	mov al, ' '
-	call output_char
-	call output_newline
+	call output_char		; Overwrite the cursor
 
 	pop rax
 	pop rdx

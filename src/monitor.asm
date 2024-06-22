@@ -182,6 +182,8 @@ dir_next:
 	je dir_end
 
 	push rsi
+	mov rsi, newline
+	call ui_output
 	mov rdi, temp_string1
 	mov rsi, rdi
 	call string_from_int
@@ -201,8 +203,6 @@ dir_next:
 	mov rdi, temp_string1
 	mov rsi, rdi
 	call string_from_int
-	call ui_output
-	mov rsi, newline
 	call ui_output
 	pop rsi
 	pop rax
@@ -854,12 +854,12 @@ hextable:		db '0123456789ABCDEF'
 
 ; Strings
 
-prompt:			db '> ', 0
+prompt:			db 13, '> ', 0
 message_ver:		db '1.0', 13, 0
-message_load:		db 'Enter file number: ', 0
-message_unknown:	db 'Unknown command', 13, 0
-message_noFS:		db 'No filesystem detected', 13, 0
-message_help:		db 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 13, 0
+message_load:		db 13, 'Enter file number: ', 0
+message_unknown:	db 13, 'Unknown command', 0
+message_noFS:		db 13, 'No filesystem detected', 0
+message_help:		db 13, 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
@@ -887,8 +887,8 @@ tab:			db 9, 0
 insufargs:		db 'Insufficient argument(s)', 13, 0
 toomanyargs:		db 'Too many arguments', 13, 0
 invalidargs:		db 'Invalid argument(s)', 13, 0
-dirmsg:			db '#       Name            Size', 13, '-----------------------------', 13, 0
-dirmsgbmfs:		db 'BMFS', 13, 0
+dirmsg:			db 13, '#       Name            Size', 13, '-----------------------------', 0
+dirmsgbmfs:		db 13, 'BMFS', 0
 
 ; Variables
 align 16
