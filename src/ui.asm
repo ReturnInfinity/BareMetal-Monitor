@@ -74,6 +74,21 @@ ui_init:
 	sub ax, 2			; Subtrack 2 for margin
 	mov [Screen_Rows], ax
 
+	; Adjust the high memory map to keep 2MiB for the Frame Buffer
+	mov rsi, 0x20000
+	mov rdi, 0x20000
+	mov rcx, 4			; 8 MiB
+adjustnext:
+	lodsq				; Load a PDPE
+	add eax, 0x200000		; Add 2MiB to its base address
+	stosq				; Store it back
+	dec rcx
+	cmp rcx, 0
+	jne adjustnext
+	mov rcx, 4			; 8 MiB TODO Adjust for stack
+	xor eax, eax
+	rep stosq
+
 	call screen_clear
 
 	; Overwrite the kernel b_output function so output goes to the screen instead of the serial port
@@ -422,6 +437,28 @@ pixel:
 	push rbx
 	push rax
 
+	push rbx
+	push rax
+
+	; Calculate offset in frame buffer and store pixel
+	push rax			; Save the pixel details
+	mov rax, rbx
+	shr eax, 16			; Isolate Y co-ordinate
+	xor ecx, ecx
+	mov cx, [VideoX]
+	mul ecx				; Multiply Y by VideoX
+	and ebx, 0x0000FFFF		; Isolate X co-ordinate
+	add eax, ebx			; Add X
+	mov rbx, rax			; Save the offset to RBX
+	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
+	pop rax				; Restore pixel details
+	shl ebx, 2			; Quickly multiply by 4
+	add rdi, rbx			; Add offset to frame buffer memory
+	stosd				; Output pixel to the frame buffer
+
+	pop rax
+	pop rbx
+
 	; Calculate offset in video memory and store pixel
 	push rax			; Save the pixel details
 	mov rax, rbx
@@ -464,13 +501,15 @@ screen_scroll:
 	mul ecx				; EAX = EAX * ECX
 	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
 
-	mov rdi, [VideoBase]
+	mov rdi, [FrameBuffer]
 	mov esi, [Screen_Row_2]
 	add rsi, rdi
 	mov ecx, [Screen_Bytes]
 	sub ecx, eax			; Subtract the offset
 	shr ecx, 2			; Quick divide by 4
 	rep movsd
+
+	call screen_update
 
 	pop rax
 	pop rcx
@@ -489,14 +528,57 @@ screen_clear:
 	push rcx
 	push rax
 
-	mov rdi, [VideoBase]
+	; Set the Frame Buffer to the background colour
+	mov rdi, [FrameBuffer]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
 	shr ecx, 2			; Quick divide by 4
 	rep stosd
 
+	; Write the Frame Buffer to Video memory
+	call screen_update
+
 	pop rax
 	pop rcx
+	pop rdi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; screen_update -- Updates the screen from the frame buffer
+;  IN:	Nothing
+; OUT:	All registers preserved
+screen_update:
+	push rdi
+	push rsi
+	push rdx
+	push rcx
+
+	mov rsi, [FrameBuffer]
+	mov rdi, [VideoBase]
+	xor edx, edx
+	mov dx, [VideoY]
+
+screen_update_line:
+	xor ecx, ecx
+	mov cx, [VideoX]
+	rep movsd			; Only copy visible pixels
+	dec edx
+	jz screen_update_done
+	xor ecx, ecx
+	mov cx, [VideoX]
+	shl ecx, 2			; Quick multiply by 4
+	sub rdi, rcx
+	mov ecx, [VideoPPSL]
+	shl ecx, 2			; Quick multiply by 4
+	add rdi, rcx
+	jmp screen_update_line
+
+screen_update_done:
+	pop rcx
+	pop rsi
+	pop rdx
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
@@ -531,6 +613,7 @@ string_length:
 align 16
 
 VideoBase:		dq 0
+FrameBuffer:		dq 0x0000000000200000
 FG_Color:		dd 0x00FFFFFF
 BG_Color:		dd 0x00404040
 Screen_Pixels:		dd 0
