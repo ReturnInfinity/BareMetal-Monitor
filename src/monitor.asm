@@ -402,7 +402,10 @@ peek:
 	cmp byte [args], 3
 	jl insuf
 	jg toomany
-
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
 	mov rsi, temp_string
 	call string_length
 	add rsi, 1
@@ -451,8 +454,6 @@ peek_q:
 	jmp peek_end
 
 peek_end:
-	mov rsi, newline
-	call ui_output
 	jmp poll
 
 poke:
