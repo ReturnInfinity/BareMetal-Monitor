@@ -330,6 +330,11 @@ dump:
 	jmp poll
 
 dump_b:
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
+dump_b_next:
 	lodsb
 	call dump_al
 	push rsi
@@ -337,14 +342,15 @@ dump_b:
 	call ui_output
 	pop rsi
 	dec rcx
-	jnz dump_b
+	jnz dump_b_next
+	jmp dump_end
+
+dump_w:
 	push rsi
 	mov rsi, newline
 	call ui_output
 	pop rsi
-	jmp dump_end
-
-dump_w:
+dump_w_next:
 	lodsw
 	call dump_ax
 	push rsi
@@ -352,14 +358,14 @@ dump_w:
 	call ui_output
 	pop rsi
 	dec rcx
-	jnz dump_w
+	jnz dump_w_next
+	jmp dump_end
+
+dump_d:
 	push rsi
 	mov rsi, newline
 	call ui_output
 	pop rsi
-	jmp dump_end
-
-dump_d:
 	mov rax, rsi
 	call dump_rax
 	push rsi
@@ -368,15 +374,15 @@ dump_d:
 	pop rsi
 	lodsd
 	call dump_eax
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
 	dec rcx
 	jnz dump_d
 	jmp dump_end
 
 dump_q:
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
 	mov rax, rsi
 	call dump_rax
 	push rsi
@@ -385,10 +391,6 @@ dump_q:
 	pop rsi
 	lodsq
 	call dump_rax
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
 	dec rcx
 	jnz dump_q
 	jmp dump_end
