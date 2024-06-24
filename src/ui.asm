@@ -26,6 +26,7 @@ ui_init:
 	mov rcx, screen_lfb_get
 	call [b_config]
 	mov [VideoBase], rax
+	mov [LastLine], rax
 	xor eax, eax
 	mov rcx, screen_x_get
 	call [b_config]
@@ -74,31 +75,11 @@ ui_init:
 	sub ax, 2			; Subtrack 2 for margin
 	mov [Screen_Rows], ax
 
-	; Adjust the high memory map to keep 2MiB for the Frame Buffer
-	mov rsi, 0x20000
-	mov rdi, 0x20000
-	mov rcx, 4			; 8 MiB
-adjustnext:
-	lodsq				; Load a PDPE
-	add eax, 0x200000		; Add 2MiB to its base address
-	stosq				; Store it back
-	dec rcx
-	cmp rcx, 0
-	jne adjustnext
-	mov rcx, 4			; 8 MiB TODO Adjust for stack
-	xor eax, eax
-	rep stosq
-
 	call screen_clear
 
 	; Overwrite the kernel b_output function so output goes to the screen instead of the serial port
 	mov rax, output_chars
 	mov [0x100018], rax
-
-	; Move cursor to bottom of screen
-	mov ax, [Screen_Rows]
-	dec ax
-	mov [Screen_Cursor_Row], ax
 
 	pop rax
 	pop rcx
@@ -201,9 +182,7 @@ inc_cursor:
 	mov ax, [Screen_Cursor_Row]
 	cmp ax, [Screen_Rows]		; Compare it to the # of rows for the screen
 	jne inc_cursor_done		; If not equal we are done
-	call screen_scroll		; Otherwise scroll the screen
-	dec word [Screen_Cursor_Row]	; Decrement the current cursor row
-
+	mov word [Screen_Cursor_Row], 0
 inc_cursor_done:
 	pop rax
 	ret
@@ -217,14 +196,14 @@ inc_cursor_done:
 dec_cursor:
 	push rax
 
-	cmp word [Screen_Cursor_Col], 0
-	jne dec_cursor_done
-	dec word [Screen_Cursor_Row]
-	mov ax, [Screen_Cols]
+	cmp word [Screen_Cursor_Col], 0	; Compare the current cursor column to 0
+	jne dec_cursor_done		; If not equal we are done
+	dec word [Screen_Cursor_Row]	; Otherwise decrement the row
+	mov ax, [Screen_Cols]		; Get the total colums and save it as the current
 	mov word [Screen_Cursor_Col], ax
 
 dec_cursor_done:
-	dec word [Screen_Cursor_Col]
+	dec word [Screen_Cursor_Col]	; Decrement the cursor as usual
 
 	pop rax
 	ret
@@ -309,7 +288,7 @@ output_char:
 
 
 ; -----------------------------------------------------------------------------
-; output_newline -- Reset cursor to start of next line and scroll if needed
+; output_newline -- Reset cursor to start of next line and wrap if needed
 ;  IN:	Nothing
 ; OUT:	All registers preserved
 output_newline:
@@ -319,14 +298,15 @@ output_newline:
 	mov ax, [Screen_Rows]		; Grab max rows on screen
 	dec ax				; and subtract 1
 	cmp ax, [Screen_Cursor_Row]	; Is the cursor already on the bottom row?
-	je output_newline_scroll	; If so, then scroll
+	je output_newline_wrap		; If so, then wrap
 	inc word [Screen_Cursor_Row]	; If not, increment the cursor to next row
 	jmp output_newline_done
 
-output_newline_scroll:
-	call screen_scroll
+output_newline_wrap:
+	mov word [Screen_Cursor_Row], 0
 
 output_newline_done:
+	call draw_line
 	pop rax
 	ret
 ; -----------------------------------------------------------------------------
@@ -437,28 +417,6 @@ pixel:
 	push rbx
 	push rax
 
-	push rbx
-	push rax
-
-	; Calculate offset in frame buffer and store pixel
-	push rax			; Save the pixel details
-	mov rax, rbx
-	shr eax, 16			; Isolate Y co-ordinate
-	xor ecx, ecx
-	mov cx, [VideoX]
-	mul ecx				; Multiply Y by VideoX
-	and ebx, 0x0000FFFF		; Isolate X co-ordinate
-	add eax, ebx			; Add X
-	mov rbx, rax			; Save the offset to RBX
-	mov rdi, [FrameBuffer]		; Store the pixel to the frame buffer
-	pop rax				; Restore pixel details
-	shl ebx, 2			; Quickly multiply by 4
-	add rdi, rbx			; Add offset to frame buffer memory
-	stosd				; Output pixel to the frame buffer
-
-	pop rax
-	pop rbx
-
 	; Calculate offset in video memory and store pixel
 	push rax			; Save the pixel details
 	mov rax, rbx
@@ -485,41 +443,6 @@ pixel:
 
 
 ; -----------------------------------------------------------------------------
-; scroll_screen -- Scrolls the screen up by one line
-;  IN:	Nothing
-; OUT:	All registers preserved
-screen_scroll:
-	push rsi
-	push rdi
-	push rcx
-	push rax
-
-	xor eax, eax			; Calculate offset to bottom row
-	xor ecx, ecx
-	mov ax, [VideoX]
-	mov cl, [font_height]
-	mul ecx				; EAX = EAX * ECX
-	shl eax, 2			; Quick multiply by 4 for 32-bit colour depth
-
-	mov rdi, [FrameBuffer]
-	mov esi, [Screen_Row_2]
-	add rsi, rdi
-	mov ecx, [Screen_Bytes]
-	sub ecx, eax			; Subtract the offset
-	shr ecx, 2			; Quick divide by 4
-	rep movsd
-
-	call screen_update
-
-	pop rax
-	pop rcx
-	pop rdi
-	pop rsi
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
 ; screen_clear -- Clear the screen
 ;  IN:	Nothing
 ; OUT:	All registers preserved
@@ -528,15 +451,15 @@ screen_clear:
 	push rcx
 	push rax
 
+	mov word [Screen_Cursor_Col], 0
+	mov word [Screen_Cursor_Row], 0
+
 	; Set the Frame Buffer to the background colour
-	mov rdi, [FrameBuffer]
+	mov rdi, [VideoBase]
 	mov eax, [BG_Color]
 	mov ecx, [Screen_Bytes]
 	shr ecx, 2			; Quick divide by 4
 	rep stosd
-
-	; Write the Frame Buffer to Video memory
-	call screen_update
 
 	pop rax
 	pop rcx
@@ -546,38 +469,47 @@ screen_clear:
 
 
 ; -----------------------------------------------------------------------------
-; screen_update -- Updates the screen from the frame buffer
-;  IN:	Nothing
-; OUT:	All registers preserved
-screen_update:
+; draw_line
+draw_line:
 	push rdi
-	push rsi
 	push rdx
 	push rcx
+	push rax
 
-	mov rsi, [FrameBuffer]
+; Clear the previously drawn line
+	mov rdi, [LastLine]
+	mov cx, [VideoPPSL]
+	mov eax, [BG_Color]
+	rep stosd
+
+; Display a line under the current cursor row
 	mov rdi, [VideoBase]
-	xor edx, edx
-	mov dx, [VideoY]
-
-screen_update_line:
 	xor ecx, ecx
-	mov cx, [VideoX]
-	rep movsd			; Only copy visible pixels
-	dec edx
-	jz screen_update_done
+	xor eax, eax
+	mov ax, [Screen_Cursor_Row]
+	add ax, 2
+	mov cx, 48			; Font height
+	mul cx
+	mov cx, [VideoPPSL]
+	mul ecx				; Multiply Y by VideoPPSL
+	add rdi, rax
+	mov [LastLine], rdi
 	xor ecx, ecx
-	mov cx, [VideoX]
-	shl ecx, 2			; Quick multiply by 4
-	sub rdi, rcx
-	mov ecx, [VideoPPSL]
-	shl ecx, 2			; Quick multiply by 4
-	add rdi, rcx
-	jmp screen_update_line
+	mov cx, [VideoPPSL]
+	mov eax, 0x00F7CA54
+	rep stosd
 
-screen_update_done:
+; Clear the whole next row of text
+	xor eax, eax
+	mov ax, [VideoPPSL]
+	mov ecx, 12
+	mul ecx
+	mov ecx, eax
+	mov eax, [BG_Color]
+	rep stosd
+
+	pop rax
 	pop rcx
-	pop rsi
 	pop rdx
 	pop rdi
 	ret
@@ -613,7 +545,7 @@ string_length:
 align 16
 
 VideoBase:		dq 0
-FrameBuffer:		dq 0x0000000000200000
+LastLine:		dq 0
 FG_Color:		dd 0x00FFFFFF
 BG_Color:		dd 0x00404040
 Screen_Pixels:		dd 0
