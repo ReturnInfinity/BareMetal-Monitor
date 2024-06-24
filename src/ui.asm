@@ -461,6 +461,8 @@ screen_clear:
 	shr ecx, 2			; Quick divide by 4
 	rep stosd
 
+	call draw_line
+
 	pop rax
 	pop rcx
 	pop rdi
@@ -499,7 +501,13 @@ draw_line:
 	mov eax, 0x00F7CA54
 	rep stosd
 
-; Clear the whole next row of text
+; Clear the next row of text
+	mov ax, [Screen_Cursor_Row]
+	inc ax
+	cmp ax, [Screen_Rows]		; Compare it to the # of rows for the screen
+	jne draw_line_skip
+	mov rdi, [VideoBase]
+draw_line_skip:
 	xor eax, eax
 	mov ax, [VideoPPSL]
 	mov ecx, 12

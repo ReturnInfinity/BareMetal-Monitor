@@ -97,6 +97,9 @@ bmfs:
 	jmp poll
 
 poll:
+	mov rsi, newline
+	call ui_output
+poll_nonewline:
 	mov rsi, prompt
 	call ui_output
 	mov rdi, temp_string
@@ -176,7 +179,7 @@ exec:
 
 cls:
 	call screen_clear
-	jmp poll
+	jmp poll_nonewline
 
 dir:
 	mov al, [FSType]
@@ -876,7 +879,7 @@ hextable:		db '0123456789ABCDEF'
 
 ; Strings
 
-prompt:			db 13, '> ', 0
+prompt:			db '> ', 0
 message_ver:		db 13, '1.0', 0
 message_load:		db 13, 'Enter file number: ', 0
 message_unknown:	db 13, 'Unknown command', 0
