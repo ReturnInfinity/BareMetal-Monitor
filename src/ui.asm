@@ -64,7 +64,7 @@ ui_init:
 	mov ax, [VideoX]
 	mov cl, [font_width]
 	div cx				; Divide VideoX by font_width
-	sub ax, 2			; Subtract 2 for margin
+	sub ax, 2			; Subtract 2 for horizontal margin
 	mov [Screen_Cols], ax
 	xor eax, eax
 	xor edx, edx
@@ -72,7 +72,6 @@ ui_init:
 	mov ax, [VideoY]
 	mov cl, [font_height]
 	div cx				; Divide VideoY by font_height
-	sub ax, 2			; Subtrack 2 for margin
 	mov [Screen_Rows], ax
 
 	call screen_clear
@@ -344,7 +343,6 @@ load_char:
 	xor edx, edx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Row]
-	add ax, 1
 	mov cx, 12			; Font height
 	mul cx
 	mov bx, ax
@@ -352,7 +350,7 @@ load_char:
 	xor edx, edx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Col]
-	add ax, 1
+	add ax, 1			; Add offset by one char for horizontal margin
 	mov cx, 6			; Font width
 	mul cx
 	mov bx, ax
@@ -489,7 +487,7 @@ draw_line:
 	xor ecx, ecx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Row]
-	add ax, 2
+	add ax, 1
 	mov cx, 48			; Font height
 	mul cx
 	mov cx, [VideoPPSL]
@@ -502,11 +500,11 @@ draw_line:
 	rep stosd
 
 ; Clear the next row of text
-	mov ax, [Screen_Cursor_Row]
-	inc ax
+	mov ax, [Screen_Cursor_Row]	; Get the currect cursor row
+	inc ax				; Inc by 1 as it is 0-based
 	cmp ax, [Screen_Rows]		; Compare it to the # of rows for the screen
 	jne draw_line_skip
-	mov rdi, [VideoBase]
+	mov rdi, [VideoBase]		; Roll RDI back to the start of video memory
 draw_line_skip:
 	xor eax, eax
 	mov ax, [VideoPPSL]
