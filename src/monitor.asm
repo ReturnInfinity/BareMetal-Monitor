@@ -319,6 +319,7 @@ dump:
 
 	mov rsi, r8
 	mov rcx, r9
+	xor edx, edx		; Counter for line output
 
 	cmp al, 1
 	je dump_b
@@ -337,25 +338,48 @@ dump_b:
 	mov rsi, newline
 	call ui_output
 	pop rsi
+	mov rax, rsi
+	call dump_rax
+	push rsi
+	mov rsi, dumpsep
+	call ui_output
+	pop rsi
 dump_b_next:
+	cmp dl, 0x10
+	je dump_b_newline
 	lodsb
 	call dump_al
+	inc dl
 	push rsi
 	mov rsi, space
 	call ui_output
 	pop rsi
-	dec rcx
+	dec rcx			; Decrement the number of bytes left to output
 	jnz dump_b_next
 	jmp dump_end
+dump_b_newline:
+	xor edx, edx
+	cmp rcx, 0
+	jz dump_end
+	jmp dump_b
 
 dump_w:
 	push rsi
 	mov rsi, newline
 	call ui_output
 	pop rsi
+	mov rax, rsi
+	call dump_rax
+	push rsi
+	mov rsi, dumpsep
+	call ui_output
+	pop rsi
 dump_w_next:
+	cmp dl, 0x8
+	je dump_w_newline
 	lodsw
 	call dump_ax
+	inc dl
 	push rsi
 	mov rsi, space
 	call ui_output
@@ -363,6 +387,11 @@ dump_w_next:
 	dec rcx
 	jnz dump_w_next
 	jmp dump_end
+dump_w_newline:
+	xor edx, edx
+	cmp rcx, 0
+	jz dump_end
+	jmp dump_w
 
 dump_d:
 	push rsi
@@ -375,11 +404,24 @@ dump_d:
 	mov rsi, dumpsep
 	call ui_output
 	pop rsi
+dump_d_next:
+	cmp dl, 0x4
+	je dump_d_newline
 	lodsd
 	call dump_eax
+	inc dl
+	push rsi
+	mov rsi, space
+	call ui_output
+	pop rsi
 	dec rcx
-	jnz dump_d
+	jnz dump_d_next
 	jmp dump_end
+dump_d_newline:
+	xor edx, edx
+	cmp rcx, 0
+	jz dump_end
+	jmp dump_d
 
 dump_q:
 	push rsi
@@ -392,11 +434,24 @@ dump_q:
 	mov rsi, dumpsep
 	call ui_output
 	pop rsi
+dump_q_next:
+	cmp dl, 0x2
+	je dump_q_newline
 	lodsq
 	call dump_rax
+	inc dl
+	push rsi
+	mov rsi, space
+	call ui_output
+	pop rsi
 	dec rcx
-	jnz dump_q
+	jnz dump_q_next
 	jmp dump_end
+dump_q_newline:
+	xor edx, edx
+	cmp rcx, 0
+	jz dump_end
+	jmp dump_q
 
 dump_end:
 	jmp poll
