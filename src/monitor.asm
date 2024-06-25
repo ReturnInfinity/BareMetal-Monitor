@@ -339,17 +339,17 @@ dump_b:
 	call ui_output
 	pop rsi
 	mov rax, rsi
-	call dump_rax
+	call dump_rax		; Display the memory address
 	push rsi
 	mov rsi, dumpsep
-	call ui_output
+	call ui_output		; Display ": "
 	pop rsi
 dump_b_next:
-	cmp dl, 0x10
-	je dump_b_newline
+	cmp dl, 0x10		; 16 bytes per line
+	je dump_b_newline	; Display a newline if we are over the limit
 	lodsb
-	call dump_al
-	inc dl
+	call dump_al		; Dump the byte
+	inc dl			; Increment our counter of values per line
 	push rsi
 	mov rsi, space
 	call ui_output
@@ -358,9 +358,7 @@ dump_b_next:
 	jnz dump_b_next
 	jmp dump_end
 dump_b_newline:
-	xor edx, edx
-	cmp rcx, 0
-	jz dump_end
+	xor edx, edx		; Reset the value counter
 	jmp dump_b
 
 dump_w:
@@ -375,7 +373,7 @@ dump_w:
 	call ui_output
 	pop rsi
 dump_w_next:
-	cmp dl, 0x8
+	cmp dl, 0x8		; 8 words per line
 	je dump_w_newline
 	lodsw
 	call dump_ax
@@ -389,8 +387,6 @@ dump_w_next:
 	jmp dump_end
 dump_w_newline:
 	xor edx, edx
-	cmp rcx, 0
-	jz dump_end
 	jmp dump_w
 
 dump_d:
@@ -405,7 +401,7 @@ dump_d:
 	call ui_output
 	pop rsi
 dump_d_next:
-	cmp dl, 0x4
+	cmp dl, 0x4		; 4 double words per line
 	je dump_d_newline
 	lodsd
 	call dump_eax
@@ -419,8 +415,6 @@ dump_d_next:
 	jmp dump_end
 dump_d_newline:
 	xor edx, edx
-	cmp rcx, 0
-	jz dump_end
 	jmp dump_d
 
 dump_q:
@@ -435,7 +429,7 @@ dump_q:
 	call ui_output
 	pop rsi
 dump_q_next:
-	cmp dl, 0x2
+	cmp dl, 0x2		; 2 quad words per line
 	je dump_q_newline
 	lodsq
 	call dump_rax
@@ -449,8 +443,6 @@ dump_q_next:
 	jmp dump_end
 dump_q_newline:
 	xor edx, edx
-	cmp rcx, 0
-	jz dump_end
 	jmp dump_q
 
 dump_end:
