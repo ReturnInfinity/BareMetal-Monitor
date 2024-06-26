@@ -97,6 +97,9 @@ bmfs:
 	jmp poll
 
 poll:
+	mov rsi, newline
+	call ui_output
+poll_nonewline:
 	mov rsi, prompt
 	call ui_output
 	mov rdi, temp_string
@@ -176,7 +179,7 @@ exec:
 
 cls:
 	call screen_clear
-	jmp poll
+	jmp poll_nonewline
 
 dir:
 	mov al, [FSType]
@@ -316,6 +319,7 @@ dump:
 
 	mov rsi, r8
 	mov rcx, r9
+	xor edx, edx		; Counter for line output
 
 	cmp al, 1
 	je dump_b
@@ -334,25 +338,46 @@ dump_b:
 	mov rsi, newline
 	call ui_output
 	pop rsi
+	mov rax, rsi
+	call dump_rax		; Display the memory address
+	push rsi
+	mov rsi, dumpsep
+	call ui_output		; Display ": "
+	pop rsi
 dump_b_next:
+	cmp dl, 0x10		; 16 bytes per line
+	je dump_b_newline	; Display a newline if we are over the limit
 	lodsb
-	call dump_al
+	call dump_al		; Dump the byte
+	inc dl			; Increment our counter of values per line
 	push rsi
 	mov rsi, space
 	call ui_output
 	pop rsi
-	dec rcx
+	dec rcx			; Decrement the number of bytes left to output
 	jnz dump_b_next
 	jmp dump_end
+dump_b_newline:
+	xor edx, edx		; Reset the value counter
+	jmp dump_b
 
 dump_w:
 	push rsi
 	mov rsi, newline
 	call ui_output
 	pop rsi
+	mov rax, rsi
+	call dump_rax
+	push rsi
+	mov rsi, dumpsep
+	call ui_output
+	pop rsi
 dump_w_next:
+	cmp dl, 0x8		; 8 words per line
+	je dump_w_newline
 	lodsw
 	call dump_ax
+	inc dl
 	push rsi
 	mov rsi, space
 	call ui_output
@@ -360,6 +385,9 @@ dump_w_next:
 	dec rcx
 	jnz dump_w_next
 	jmp dump_end
+dump_w_newline:
+	xor edx, edx
+	jmp dump_w
 
 dump_d:
 	push rsi
@@ -372,11 +400,22 @@ dump_d:
 	mov rsi, dumpsep
 	call ui_output
 	pop rsi
+dump_d_next:
+	cmp dl, 0x4		; 4 double words per line
+	je dump_d_newline
 	lodsd
 	call dump_eax
+	inc dl
+	push rsi
+	mov rsi, space
+	call ui_output
+	pop rsi
 	dec rcx
-	jnz dump_d
+	jnz dump_d_next
 	jmp dump_end
+dump_d_newline:
+	xor edx, edx
+	jmp dump_d
 
 dump_q:
 	push rsi
@@ -389,11 +428,22 @@ dump_q:
 	mov rsi, dumpsep
 	call ui_output
 	pop rsi
+dump_q_next:
+	cmp dl, 0x2		; 2 quad words per line
+	je dump_q_newline
 	lodsq
 	call dump_rax
+	inc dl
+	push rsi
+	mov rsi, space
+	call ui_output
+	pop rsi
 	dec rcx
-	jnz dump_q
+	jnz dump_q_next
 	jmp dump_end
+dump_q_newline:
+	xor edx, edx
+	jmp dump_q
 
 dump_end:
 	jmp poll
@@ -876,7 +926,7 @@ hextable:		db '0123456789ABCDEF'
 
 ; Strings
 
-prompt:			db 13, '> ', 0
+prompt:			db '> ', 0
 message_ver:		db 13, '1.0', 0
 message_load:		db 13, 'Enter file number: ', 0
 message_unknown:	db 13, 'Unknown command', 0
