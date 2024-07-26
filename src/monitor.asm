@@ -9,9 +9,9 @@
 
 BITS 64
 ORG 0x001E0000
+MONITORSIZE equ 6144			; Pad Monitor to this length
 
 %include 'api/libBareMetal.asm'
-
 
 start:
 	call ui_init
@@ -319,7 +319,7 @@ dump:
 
 	mov rsi, r8
 	mov rcx, r9
-	xor edx, edx		; Counter for line output
+	xor edx, edx			; Counter for line output
 
 	cmp al, 1
 	je dump_b
@@ -339,26 +339,26 @@ dump_b:
 	call ui_output
 	pop rsi
 	mov rax, rsi
-	call dump_rax		; Display the memory address
+	call dump_rax			; Display the memory address
 	push rsi
 	mov rsi, dumpsep
-	call ui_output		; Display ": "
+	call ui_output			; Display ": "
 	pop rsi
 dump_b_next:
-	cmp dl, 0x10		; 16 bytes per line
-	je dump_b_newline	; Display a newline if we are over the limit
+	cmp dl, 0x10			; 16 bytes per line
+	je dump_b_newline		; Display a newline if we are over the limit
 	lodsb
-	call dump_al		; Dump the byte
-	inc dl			; Increment our counter of values per line
+	call dump_al			; Dump the byte
+	inc dl				; Increment our counter of values per line
 	push rsi
 	mov rsi, space
 	call ui_output
 	pop rsi
-	dec rcx			; Decrement the number of bytes left to output
+	dec rcx				; Decrement the number of bytes left to output
 	jnz dump_b_next
 	jmp dump_end
 dump_b_newline:
-	xor edx, edx		; Reset the value counter
+	xor edx, edx			; Reset the value counter
 	jmp dump_b
 
 dump_w:
@@ -373,7 +373,7 @@ dump_w:
 	call ui_output
 	pop rsi
 dump_w_next:
-	cmp dl, 0x8		; 8 words per line
+	cmp dl, 0x8			; 8 words per line
 	je dump_w_newline
 	lodsw
 	call dump_ax
@@ -401,7 +401,7 @@ dump_d:
 	call ui_output
 	pop rsi
 dump_d_next:
-	cmp dl, 0x4		; 4 double words per line
+	cmp dl, 0x4			; 4 double words per line
 	je dump_d_newline
 	lodsd
 	call dump_eax
@@ -429,7 +429,7 @@ dump_q:
 	call ui_output
 	pop rsi
 dump_q_next:
-	cmp dl, 0x2		; 2 quad words per line
+	cmp dl, 0x2			; 2 quad words per line
 	je dump_q_newline
 	lodsq
 	call dump_rax
@@ -636,7 +636,7 @@ string_chomp:
 	push rdi			; ...while RSI will point to the "actual" start (without the spaces)
 	add rdi, rcx			; os_string_length stored the length in RCX
 
-string_chomp_findend:		; we start at the end of the string and move backwards until we don't find a space
+string_chomp_findend:			; we start at the end of the string and move backwards until we don't find a space
 	dec rdi
 	cmp rsi, rdi			; Check to make sure we are not reading backward past the string start
 	jg string_chomp_fail		; If so then fail (string only contained spaces)
@@ -662,7 +662,7 @@ string_chomp_fail:			; In this situation the string is all spaces
 ; At this point RSI points to the actual start of the string (minus the leading spaces, if any)
 ; And RDI point to the start of the string
 
-string_chomp_copy:		; Copy a byte from RSI to RDI one byte at a time until we find a NULL
+string_chomp_copy:			; Copy a byte from RSI to RDI one byte at a time until we find a NULL
 	lodsb
 	stosb
 	test al, al
@@ -775,23 +775,23 @@ string_from_int:
 	push rbx
 	push rax
 
-	mov rbx, 10					; base of the decimal system
-	xor ecx, ecx					; number of digits generated
+	mov rbx, 10			; base of the decimal system
+	xor ecx, ecx			; number of digits generated
 string_from_int_next_divide:
-	xor edx, edx					; RAX extended to (RDX,RAX)
-	div rbx						; divide by the number-base
-	push rdx					; save remainder on the stack
-	inc rcx						; and count this remainder
-	test rax, rax					; was the quotient zero?
-	jnz string_from_int_next_divide			; no, do another division
+	xor edx, edx			; RAX extended to (RDX,RAX)
+	div rbx				; divide by the number-base
+	push rdx			; save remainder on the stack
+	inc rcx				; and count this remainder
+	test rax, rax			; was the quotient zero?
+	jnz string_from_int_next_divide	; no, do another division
 
 string_from_int_next_digit:
-	pop rax						; else pop recent remainder
-	add al, '0'					; and convert to a numeral
-	stosb						; store to memory-buffer
-	loop string_from_int_next_digit			; again for other remainders
+	pop rax				; else pop recent remainder
+	add al, '0'			; and convert to a numeral
+	stosb				; store to memory-buffer
+	loop string_from_int_next_digit	; again for other remainders
 	xor al, al
-	stosb						; Store the null terminator at the end of the string
+	stosb				; Store the null terminator at the end of the string
 
 	pop rax
 	pop rbx
@@ -852,21 +852,21 @@ hex_string_to_int_loop:
 	mov cl, 4
 	cmp al, 'a'
 	jb hex_string_to_int_ok
-	sub al, 0x20				; convert to upper case if alpha
+	sub al, 0x20			; convert to upper case if alpha
 hex_string_to_int_ok:
-	sub al, '0'				; check if legal
-	jc hex_string_to_int_exit		; jump if out of range
+	sub al, '0'			; check if legal
+	jc hex_string_to_int_exit	; jump if out of range
 	cmp al, 9
-	jle hex_string_to_int_got		; jump if number is 0-9
-	sub al, 7				; convert to number from A-F or 10-15
-	cmp al, 15				; check if legal
-	ja hex_string_to_int_exit		; jump if illegal hex char
+	jle hex_string_to_int_got	; jump if number is 0-9
+	sub al, 7			; convert to number from A-F or 10-15
+	cmp al, 15			; check if legal
+	ja hex_string_to_int_exit	; jump if illegal hex char
 hex_string_to_int_got:
 	shl rbx, cl
 	or bl, al
 	jmp hex_string_to_int_loop
 hex_string_to_int_exit:
-	mov rax, rbx				; integer value stored in RBX, move to RAX
+	mov rax, rbx			; integer value stored in RBX, move to RAX
 
 	pop rbx
 	pop rcx
@@ -976,8 +976,9 @@ FSType: 		db 0		; File System
 tchar: db 0, 0, 0
 temp_string1: times 50 db 0
 temp_string2: times 50 db 0
-align 4096
+align 16
 temp_string: db 0
 
+times MONITORSIZE-($-$$) db 0x90	; Set the compiled monitor to at least this size in bytes
 ; =============================================================================
 ; EOF

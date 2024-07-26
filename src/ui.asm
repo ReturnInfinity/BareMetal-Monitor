@@ -496,7 +496,7 @@ draw_line:
 	mov [LastLine], rdi
 	xor ecx, ecx
 	mov cx, [VideoPPSL]
-	mov eax, 0x00F7CA54
+	mov eax, [Line_Color]
 	rep stosd
 
 ; Clear the next row of text
@@ -552,8 +552,9 @@ align 16
 
 VideoBase:		dq 0
 LastLine:		dq 0
-FG_Color:		dd 0x00FFFFFF
-BG_Color:		dd 0x00404040
+FG_Color:		dd 0x00FFFFFF	; White
+BG_Color:		dd 0x00404040	; Dark grey
+Line_Color:		dd 0x00F7CA54	; Return Infinity Yellow/Orange
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
 Screen_Row_2:		dd 0
