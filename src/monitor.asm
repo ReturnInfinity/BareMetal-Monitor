@@ -261,7 +261,7 @@ load_bmfs:
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]
-	; offset to file number and starting sector
+	; offset to file number, starting sector, and file size
 	pop rcx				; Restore the file #
 	shl rcx, 6
 	add rdi, rcx			; RDI points to start of BMFS entry
@@ -271,12 +271,13 @@ load_bmfs:
 	add rdi, 32			; Offset to starting block # in BMFS file record
 	mov rax, [rdi]
 	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
-	; size
-	; TODO
+	add rdi, 16			; Skip to File Size value
+	mov rcx, [rdi]			; File size in bytes
 	; load to memory, use RAX for starting sector
 	add rax, [UEFI_Disk_Offset]
 	mov rdi, [ProgramLocation]
-	mov rcx, 16			; Loading 64K for now
+	shr rcx, 12			; Quick divide by 4096
+	add rcx, 1
 	mov rdx, 0
 	call [b_storage_read]
 	jmp poll
