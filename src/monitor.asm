@@ -277,7 +277,10 @@ load_bmfs:
 	add rax, [UEFI_Disk_Offset]
 	mov rdi, [ProgramLocation]
 	shr rcx, 12			; Quick divide by 4096
-	add rcx, 1
+	cmp rcx, 0			; Loading less than 1 sector?
+	jne load_sectors		; If not, continue
+	add rcx, 1			; Otherwise add 1
+load_sectors:
 	mov rdx, 0
 	call [b_storage_read]
 	jmp poll
