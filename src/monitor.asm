@@ -42,8 +42,8 @@ start:
 	; Output memory size
 	mov rsi, memmsg
 	call ui_output
-	mov rcx, free_memory
-	call [b_config]
+	mov rsi, 0x00110104		; Kernel value for MemAmount
+	lodsd
 	mov rdi, temp_string
 	mov rsi, rdi
 	call string_from_int
