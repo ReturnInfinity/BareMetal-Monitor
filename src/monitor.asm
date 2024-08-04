@@ -950,7 +950,7 @@ cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
 diskmsg:		db ']  [hdd: ', 0
-mibmsg:			db ' MiB', 0
+mibmsg:			db ' MiB free', 0
 mhzmsg:			db ' MHz', 0
 coresmsg:		db ' x ', 0
 namsg:			db 'N/A', 0
