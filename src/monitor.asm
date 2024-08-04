@@ -42,8 +42,8 @@ start:
 	; Output memory size
 	mov rsi, memmsg
 	call ui_output
-	mov rsi, 0x5020
-	lodsd
+	mov rcx, free_memory
+	call [b_config]
 	mov rdi, temp_string
 	mov rsi, rdi
 	call string_from_int
