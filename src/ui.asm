@@ -74,8 +74,6 @@ ui_init:
 	div cx				; Divide VideoY by font_height
 	mov [Screen_Rows], ax
 
-	call screen_clear
-
 	; Overwrite the kernel b_output function so output goes to the screen instead of the serial port
 	mov rax, output_chars
 	mov [0x100018], rax
