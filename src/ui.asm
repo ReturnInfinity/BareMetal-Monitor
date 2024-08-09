@@ -49,6 +49,8 @@ ui_init:
 	mul ecx
 	mov [Screen_Bytes], eax
 
+	call screen_clear
+
 	; Calculate font parameters
 	xor eax, eax
 	xor ecx, ecx
