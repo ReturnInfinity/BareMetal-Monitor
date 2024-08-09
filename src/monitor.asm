@@ -14,7 +14,10 @@ MONITORSIZE equ 6144			; Pad Monitor to this length
 %include 'api/libBareMetal.asm'
 
 start:
-	call ui_init
+	cmp byte [firstrun], 1		; Check if the first run flag is set
+	jne poll			; If not, jump to poll
+	call ui_init			; Otherwise run ui_init
+	mov byte [firstrun], 0		; And clear the first run flag
 
 	; Output system details
 
@@ -160,17 +163,19 @@ poll_nonewline:
 	jmp poll
 
 testzone:
-	xor eax, eax			; Zero RAX for the packet counter
-	mov [0x1e8000], rax		; Store it to a temp location
-tst_loop:
-	call [b_input]			; Check if there was a key pressed
-	jnz poll			; If so, jmp to the main loop
-	mov rdi, temp_string		; Temp location to store the packet
-	call [b_net_rx]			; Returns bytes received in RCX, Zero flag set on no bytes
-	jz tst_loop_nodata		; In nothing was received skip incrementing the counter
-	add qword [0x1e8000], 1		; Increment the packet counter
-tst_loop_nodata:
-	jmp tst_loop
+	xor ecx, ecx
+	div ecx
+;	xor eax, eax			; Zero RAX for the packet counter
+;	mov [0x1e8000], rax		; Store it to a temp location
+;tst_loop:
+;	call [b_input]			; Check if there was a key pressed
+;	jnz poll			; If so, jmp to the main loop
+;	mov rdi, temp_string		; Temp location to store the packet
+;	call [b_net_rx]			; Returns bytes received in RCX, Zero flag set on no bytes
+;	jz tst_loop_nodata		; In nothing was received skip incrementing the counter
+;	add qword [0x1e8000], 1		; Increment the packet counter
+;tst_loop_nodata:
+;	jmp tst_loop
 	jmp poll
 
 exec:
@@ -972,6 +977,7 @@ ProgramLocation:	dq 0xFFFF800000000000
 UEFI_Disk_Offset:	dq 32768
 args:			db 0
 FSType: 		db 0		; File System
+firstrun:		db 1		; A flag for running ui_init only once
 
 
 %include 'ui.asm'
