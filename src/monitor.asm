@@ -278,14 +278,13 @@ load_bmfs:
 	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
 	add rdi, 16			; Skip to File Size value
 	mov rcx, [rdi]			; File size in bytes
+	cmp rcx, 0			; Is the file empty?
+	je poll				; If so, no need to load it
 	; load to memory, use RAX for starting sector
 	add rax, [UEFI_Disk_Offset]
 	mov rdi, [ProgramLocation]
+	add rcx, 4095			; Add 1-byte less of a full sector amount
 	shr rcx, 12			; Quick divide by 4096
-	cmp rcx, 0			; Loading less than 1 sector?
-	jne load_sectors		; If not, continue
-	add rcx, 1			; Otherwise add 1
-load_sectors:
 	mov rdx, 0
 	call [b_storage_read]
 	jmp poll
