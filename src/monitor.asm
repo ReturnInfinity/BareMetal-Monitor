@@ -935,11 +935,11 @@ hextable:		db '0123456789ABCDEF'
 ; Strings
 
 prompt:			db '> ', 0
-message_ver:		db 13, '1.0', 0
-message_load:		db 13, 'Enter file number: ', 0
-message_unknown:	db 13, 'Unknown command', 0
-message_noFS:		db 13, 'No filesystem detected', 0
-message_help:		db 13, 'Available commands:', 13, 'cls  - clear the screen', 13, 'dir  - Show programs currently on disk', 13, 'load - Load a program to memory (you will be prompted for the program number)', 13, 'exec - Run the program currently in memory', 13, 'ver  - Show the system version', 13, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 13, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 13, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 0
+message_ver:		db 10, '1.0', 0
+message_load:		db 10, 'Enter file number: ', 0
+message_unknown:	db 10, 'Unknown command', 0
+message_noFS:		db 10, 'No filesystem detected', 0
+message_help:		db 10, 'Available commands:', 10, 'cls  - clear the screen', 10, 'dir  - Show programs currently on disk', 10, 'load - Load a program to memory (you will be prompted for the program number)', 10, 'exec - Run the program currently in memory', 10, 'ver  - Show the system version', 10, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 10, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 10, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
@@ -962,13 +962,13 @@ closebracketmsg:	db ']', 0
 space:			db ' ', 0
 macsep:			db ':', 0
 dumpsep:		db ': ', 0
-newline:		db 13, 0
+newline:		db 10, 0
 tab:			db 9, 0
-insufargs:		db 13, 'Insufficient argument(s)', 0
-toomanyargs:		db 13, 'Too many arguments', 0
-invalidargs:		db 13, 'Invalid argument(s)', 0
-dirmsg:			db 13, '#       Name            Size', 13, '-----------------------------', 0
-dirmsgbmfs:		db 13, 'BMFS', 0
+insufargs:		db 10, 'Insufficient argument(s)', 0
+toomanyargs:		db 10, 'Too many arguments', 0
+invalidargs:		db 10, 'Invalid argument(s)', 0
+dirmsg:			db 10, '#       Name            Size', 10, '-----------------------------', 0
+dirmsgbmfs:		db 10, 'BMFS', 0
 
 ; Variables
 align 16

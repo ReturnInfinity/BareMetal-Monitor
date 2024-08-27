@@ -220,13 +220,14 @@ output_chars:
 	push rax
 
 output_chars_nextchar:
-	jrcxz output_chars_done
+	cmp rcx, 0
+	jz output_chars_done
 	dec rcx
 	lodsb				; Get char from string and store in AL
-	cmp al, 13			; Check if there was a newline character in the string
+	cmp al, 0x0A			; Check if there was a newline character in the string
 	je output_chars_newline		; If so then we print a new line
-	cmp al, 10			; Check if there was a newline character in the string
-	je output_chars_newline		; If so then we print a new line
+	cmp al, 0x0D			; Check if there was a carriage return character in the string
+	je output_chars_cr		; If so reset to column 0
 	cmp al, 9
 	je output_chars_tab
 	call output_char
@@ -237,6 +238,23 @@ output_chars_newline:
 	cmp al, 10
 	je output_chars_newline_skip_LF
 	call output_newline
+	jmp output_chars_nextchar
+
+output_chars_cr:
+	push rcx
+	xor eax, eax
+	xor ecx, ecx
+	mov [Screen_Cursor_Col], ax
+	mov cx, [Screen_Cols]
+	mov al, ' '
+output_chars_cr_clearline:	
+	call output_char
+	dec cx
+	jnz output_chars_cr_clearline
+	dec word [Screen_Cursor_Row]
+	xor eax, eax
+	mov [Screen_Cursor_Col], ax
+	pop rcx
 	jmp output_chars_nextchar
 
 output_chars_newline_skip_LF:
