@@ -158,6 +158,10 @@ poll_nonewline:
 	call string_compare
 	jc testzone
 
+	mov rsi, command_shutdown
+	call string_compare
+	jc shutdown
+
 	mov rsi, message_unknown
 	call ui_output
 	jmp poll
@@ -177,6 +181,10 @@ testzone:
 ;tst_loop_nodata:
 ;	jmp tst_loop
 	jmp poll
+
+shutdown:
+	mov rcx, 257
+	call [b_system]
 
 exec:
 	call [ProgramLocation]
@@ -950,6 +958,7 @@ command_peek:		db 'peek', 0
 command_poke:		db 'poke', 0
 command_help:		db 'help', 0
 command_test:		db 'test', 0
+command_shutdown:	db 'shutdown', 0
 cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
