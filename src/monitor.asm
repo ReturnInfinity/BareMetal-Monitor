@@ -183,7 +183,7 @@ testzone:
 	jmp poll
 
 shutdown:
-	mov rcx, 257
+	mov rcx, sys_shutdown
 	call [b_system]
 
 exec:
