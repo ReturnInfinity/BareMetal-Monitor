@@ -360,11 +360,18 @@ dump_b:
 	mov rsi, dumpsep
 	call ui_output			; Display ": "
 	pop rsi
+	mov rdi, dump_b_chars
 dump_b_next:
 	cmp dl, 0x10			; 16 bytes per line
 	je dump_b_newline		; Display a newline if we are over the limit
 	lodsb
 	call dump_al			; Dump the byte
+	and al, 0x7F			; Clear highest character bit
+	cmp al, 32
+	jg dump_b_next_write_char	; Is it between 33 and 127?
+	mov al, 0x20			; If not, set AL to space
+dump_b_next_write_char:
+	stosb
 	inc dl				; Increment our counter of values per line
 	push rsi
 	mov rsi, space
@@ -372,8 +379,15 @@ dump_b_next:
 	pop rsi
 	dec rcx				; Decrement the number of bytes left to output
 	jnz dump_b_next
+	mov rsi, dump_b_string
+	call ui_output
 	jmp dump_end
 dump_b_newline:
+	mov rdi, dump_b_chars
+	push rsi
+	mov rsi, dump_b_string
+	call ui_output
+	pop rsi
 	xor edx, edx			; Reset the value counter
 	jmp dump_b
 
@@ -978,6 +992,8 @@ toomanyargs:		db 10, 'Too many arguments', 0
 invalidargs:		db 10, 'Invalid argument(s)', 0
 dirmsg:			db 10, '#       Name            Size', 10, '-----------------------------', 0
 dirmsgbmfs:		db 10, 'BMFS', 0
+dump_b_string:		db ' | '
+dump_b_chars:		db '                ', 0
 
 ; Variables
 align 16
