@@ -9,7 +9,7 @@
 
 BITS 64
 ORG 0x001E0000
-MONITORSIZE equ 6144			; Pad Monitor to this length
+MONITORSIZE equ 8192			; Pad Monitor to this length
 
 %include 'api/libBareMetal.asm'
 

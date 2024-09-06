@@ -351,7 +351,7 @@ hidden:
 	mov al, 0
 load_char:
 
-	mov ecx, 12			; Font height
+	mov ecx, font_h			; Font height
 	mul ecx
 	mov rsi, font_data
 	add rsi, rax			; add offset to correct glyph
@@ -361,7 +361,7 @@ load_char:
 	xor edx, edx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Row]
-	mov cx, 12			; Font height
+	mov cx, font_h			; Font height
 	mul cx
 	mov bx, ax
 	shl ebx, 16
@@ -369,7 +369,7 @@ load_char:
 	xor eax, eax
 	mov ax, [Screen_Cursor_Col]
 	add ax, 1			; Add offset by one char for horizontal margin
-	mov cx, 6			; Font width
+	mov cx, font_w			; Font width
 	mul cx
 	mov bx, ax
 
@@ -381,7 +381,7 @@ glyph_nextline:
 	lodsb				; Load a line
 
 glyph_nextpixel:
-	cmp ecx, 6			; Font width
+	cmp ecx, font_w			; Font width
 	je glyph_bailout		; Glyph row complete
 	rol al, 1
 	bt ax, 0
@@ -405,10 +405,10 @@ glyph_skip:
 
 glyph_bailout:
 	xor ecx, ecx
-	sub ebx, 6			; column start
+	sub ebx, font_w			; column start
 	add ebx, 0x00010000		; next row
 	inc edx
-	cmp edx, 12			; Font height
+	cmp edx, font_h			; Font height
 	jne glyph_nextline
 
 glyph_done:
@@ -506,7 +506,7 @@ draw_line:
 	xor eax, eax
 	mov ax, [Screen_Cursor_Row]
 	add ax, 1
-	mov cx, 48			; Font height
+	mov cx, font_h * 4		; Font height
 	mul cx
 	mov cx, [VideoPPSL]
 	mul ecx				; Multiply Y by VideoPPSL
@@ -518,7 +518,7 @@ draw_line:
 	rep stosd
 
 ; Clear the next row of text
-	mov ax, [Screen_Cursor_Row]	; Get the currect cursor row
+	mov ax, [Screen_Cursor_Row]	; Get the current cursor row
 	inc ax				; Inc by 1 as it is 0-based
 	cmp ax, [Screen_Rows]		; Compare it to the # of rows for the screen
 	jne draw_line_skip
@@ -562,8 +562,8 @@ string_length:
 	ret
 ; -----------------------------------------------------------------------------
 
-
-%include 'font.inc'
+; Only 1 font may be used
+%include 'baremetal.fnt' ; 12x6
 
 ; Variables
 align 16
