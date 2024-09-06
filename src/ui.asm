@@ -563,7 +563,8 @@ string_length:
 ; -----------------------------------------------------------------------------
 
 ; Only 1 font may be used
-%include 'baremetal.fnt' ; 12x6
+;%include 'baremetal.fnt' ; 12x6
+%include 'departuremono.fnt' ; 14x7
 
 ; Variables
 align 16
