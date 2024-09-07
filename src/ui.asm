@@ -563,9 +563,10 @@ string_length:
 ; -----------------------------------------------------------------------------
 
 ; Only 1 font may be used
-;%include 'baremetal.fnt' ; 12x6
+;%include 'small.fnt' ; 8x4
+%include 'baremetal.fnt' ; 12x6
 ;%include 'departuremono.fnt' ; 14x7
-%include 'ibm.fnt' ; 16x8
+;%include 'ibm.fnt' ; 16x8
 
 ; Variables
 align 16
