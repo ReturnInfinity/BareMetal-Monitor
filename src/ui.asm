@@ -80,6 +80,10 @@ ui_init:
 	mov rax, output_chars
 	mov [0x100018], rax
 
+	; Set b_user call entry point
+	mov rax, ui_api
+	mov [0x100048], rax
+
 	pop rax
 	pop rcx
 	pop rdx
@@ -561,6 +565,37 @@ string_length:
 	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+ui_api:
+	cmp cl, 0x01			; Set foreground color
+	je ui_api_set_fg
+	cmp cl, 0x02			; Set background color
+	je ui_api_set_bg
+	cmp cl, 0x03			; Set cursor row
+	je ui_api_set_cursor_row
+	cmp cl, 0x04			; Set cursor column
+	je ui_api_set_cursor_col
+	ret
+
+ui_api_set_fg:
+	mov [FG_Color], eax
+	ret
+
+ui_api_set_bg:
+	mov [BG_Color], eax
+	ret
+
+ui_api_set_cursor_row:
+	mov [Screen_Cursor_Row], ax
+	ret
+
+ui_api_set_cursor_col:
+	mov [Screen_Cursor_Col], ax
+	ret
+; -----------------------------------------------------------------------------
+
 
 ; Only 1 font may be used
 ;%include 'smol.fnt' ; 8x4
