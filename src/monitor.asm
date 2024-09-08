@@ -57,8 +57,8 @@ start:
 	; Output MAC address
 	mov rsi, networkmsg
 	call ui_output
-	mov rcx, mac_get
-	call [b_config]
+	mov rcx, MAC_GET
+	call [b_system]
 	ror rax, 40
 	mov ecx, 5			; Display the first 5 with separators after
 nextMAC:
@@ -183,7 +183,7 @@ testzone:
 	jmp poll
 
 shutdown:
-	mov rcx, sys_shutdown
+	mov rcx, SHUTDOWN
 	call [b_system]
 
 exec:

@@ -23,19 +23,19 @@ ui_init:
 	push rax
 
 	; Grab screen values from kernel
-	mov rcx, screen_lfb_get
-	call [b_config]
+	mov rcx, SCREEN_LFB_GET
+	call [b_system]
 	mov [VideoBase], rax
 	mov [LastLine], rax
 	xor eax, eax
-	mov rcx, screen_x_get
-	call [b_config]
+	mov rcx, SCREEN_X_GET
+	call [b_system]
 	mov [VideoX], ax
-	mov rcx, screen_y_get
-	call [b_config]
+	mov rcx, SCREEN_Y_GET
+	call [b_system]
 	mov [VideoY], ax
-	mov rcx, screen_ppsl_get
-	call [b_config]
+	mov rcx, SCREEN_PPSL_GET
+	call [b_system]
 	mov [VideoPPSL], eax
 
 	; Calculate screen parameters
