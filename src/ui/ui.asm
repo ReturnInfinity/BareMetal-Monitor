@@ -51,22 +51,13 @@ ui_init:
 
 	call screen_clear
 
-	; Calculate font parameters
-	xor eax, eax
-	xor ecx, ecx
-	mov ax, [VideoX]
-	mov cl, [font_height]
-	mul cx
-	mov ecx, 4
-	mul ecx
-	mov dword [Screen_Row_2], eax
+	; Calculate display parameters based on font dimensions
 	xor eax, eax
 	xor edx, edx
 	xor ecx, ecx
 	mov ax, [VideoX]
 	mov cl, [font_width]
 	div cx				; Divide VideoX by font_width
-	sub ax, 2			; Subtract 2 for horizontal margin
 	mov [Screen_Cols], ax
 	xor eax, eax
 	xor edx, edx
@@ -251,7 +242,7 @@ output_chars_cr:
 	mov [Screen_Cursor_Col], ax
 	mov cx, [Screen_Cols]
 	mov al, ' '
-output_chars_cr_clearline:	
+output_chars_cr_clearline:
 	call output_char
 	dec cx
 	jnz output_chars_cr_clearline
@@ -372,7 +363,6 @@ load_char:
 	xor edx, edx
 	xor eax, eax
 	mov ax, [Screen_Cursor_Col]
-	add ax, 1			; Add offset by one char for horizontal margin
 	mov cx, font_w			; Font width
 	mul cx
 	mov bx, ax
@@ -598,10 +588,10 @@ ui_api_set_cursor_col:
 
 
 ; Only 1 font may be used
-;%include 'smol.fnt' ; 8x4
-%include 'baremetal.fnt' ; 12x6
-;%include 'departuremono.fnt' ; 14x7
-;%include 'ibm.fnt' ; 16x8
+;%include 'ui/fonts/smol.fnt' ; 8x4
+;%include 'ui/fonts/baremetal.fnt' ; 12x6
+%include 'ui/fonts/departuremono.fnt' ; 14x7
+;%include 'ui/fonts/ibm.fnt' ; 16x8
 
 ; Variables
 align 16
@@ -613,7 +603,6 @@ BG_Color:		dd 0x00404040	; Dark grey
 Line_Color:		dd 0x00F7CA54	; Return Infinity Yellow/Orange
 Screen_Pixels:		dd 0
 Screen_Bytes:		dd 0
-Screen_Row_2:		dd 0
 VideoPPSL:		dd 0
 VideoX:			dw 0
 VideoY:			dw 0

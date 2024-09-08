@@ -1004,7 +1004,7 @@ FSType: 		db 0		; File System
 firstrun:		db 1		; A flag for running ui_init only once
 
 
-%include 'ui.asm'
+%include 'ui/ui.asm'
 
 ; Temporary data
 tchar: db 0, 0, 0
