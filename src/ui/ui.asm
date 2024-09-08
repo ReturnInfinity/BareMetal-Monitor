@@ -589,8 +589,8 @@ ui_api_set_cursor_col:
 
 ; Only 1 font may be used
 ;%include 'ui/fonts/smol.fnt' ; 8x4
-;%include 'ui/fonts/baremetal.fnt' ; 12x6
-%include 'ui/fonts/departuremono.fnt' ; 14x7
+%include 'ui/fonts/baremetal.fnt' ; 12x6
+;%include 'ui/fonts/departuremono.fnt' ; 14x7
 ;%include 'ui/fonts/ibm.fnt' ; 16x8
 
 ; Variables
