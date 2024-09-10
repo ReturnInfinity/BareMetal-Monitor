@@ -22,19 +22,19 @@ ui_init:
 	push rcx
 	push rax
 
-	; Grab screen values from kernel
-	mov rcx, SCREEN_LFB_GET
+	; Gather screen values from kernel
+	mov rcx, SCREEN_LFB_GET		; 64-bit - Base address of LFB
 	call [b_system]
 	mov [VideoBase], rax
-	mov [LastLine], rax
+	mov [LastLine], rax		; Rolling line marker
 	xor eax, eax
-	mov rcx, SCREEN_X_GET
+	mov rcx, SCREEN_X_GET		; 16-bit - X resolution
 	call [b_system]
 	mov [VideoX], ax
-	mov rcx, SCREEN_Y_GET
+	mov rcx, SCREEN_Y_GET		; 16-bit - Y resolution
 	call [b_system]
 	mov [VideoY], ax
-	mov rcx, SCREEN_PPSL_GET
+	mov rcx, SCREEN_PPSL_GET	; 16-bit - Pixels per scan line
 	call [b_system]
 	mov [VideoPPSL], eax
 
@@ -558,15 +558,66 @@ string_length:
 
 
 ; -----------------------------------------------------------------------------
+; ui_api -- API calls for the UI
+;  IN:	RCX = API function
+;	RAX = Value (depending on the function)
+; OUT:	RAX = Value (depending on the function)
+;	All other registers preserved
 ui_api:
-	cmp cl, 0x01			; Set foreground color
+	cmp cl, 0x01			; Get foreground color
+	je ui_api_get_fg
+	cmp cl, 0x02			; Get background color
+	je ui_api_get_bg
+	cmp cl, 0x03			; Get cursor row
+	je ui_api_get_cursor_row
+	cmp cl, 0x04			; Get cursor column
+	je ui_api_get_cursor_col
+	cmp cl, 0x05			; Get cursor max row
+	je ui_api_get_cursor_row_max
+	cmp cl, 0x06			; Get cursor max column
+	je ui_api_get_cursor_col_max
+
+	cmp cl, 0x11			; Set foreground color
 	je ui_api_set_fg
-	cmp cl, 0x02			; Set background color
+	cmp cl, 0x12			; Set background color
 	je ui_api_set_bg
-	cmp cl, 0x03			; Set cursor row
+	cmp cl, 0x13			; Set cursor row
 	je ui_api_set_cursor_row
-	cmp cl, 0x04			; Set cursor column
+	cmp cl, 0x14			; Set cursor column
 	je ui_api_set_cursor_col
+	cmp cl, 0x05			; Set cursor max row
+	je ui_api_set_cursor_row_max
+	cmp cl, 0x06			; Set cursor max column
+	je ui_api_set_cursor_col_max
+
+	ret
+
+ui_api_get_fg:
+	mov eax, [FG_Color]
+	ret
+	
+ui_api_get_bg:
+	mov eax, [BG_Color]
+	ret
+
+ui_api_get_cursor_row:
+	xor eax, eax
+	mov ax, [Screen_Cursor_Row]
+	ret
+
+ui_api_get_cursor_col:
+	xor eax, eax
+	mov ax, [Screen_Cursor_Col]
+	ret
+
+ui_api_get_cursor_row_max:
+	xor eax, eax
+	mov ax, [Screen_Rows]
+	ret
+
+ui_api_get_cursor_col_max:
+	xor eax, eax
+	mov ax, [Screen_Cols]
 	ret
 
 ui_api_set_fg:
@@ -583,6 +634,14 @@ ui_api_set_cursor_row:
 
 ui_api_set_cursor_col:
 	mov [Screen_Cursor_Col], ax
+	ret
+
+ui_api_set_cursor_row_max:
+	mov [Screen_Rows], ax
+	ret
+
+ui_api_set_cursor_col_max:
+	mov [Screen_Cols], ax
 	ret
 ; -----------------------------------------------------------------------------
 
