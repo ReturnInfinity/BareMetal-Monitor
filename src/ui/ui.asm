@@ -219,9 +219,9 @@ output_chars_nextchar:
 	jz output_chars_done
 	dec rcx
 	lodsb				; Get char from string and store in AL
-	cmp al, 0x0A			; Check if there was a newline character in the string
+	cmp al, 0x0A			; LF - Check if there was a newline (aka line feed) character in the string
 	je output_chars_newline		; If so then we print a new line
-	cmp al, 0x0D			; Check if there was a carriage return character in the string
+	cmp al, 0x0D			; CR - Check if there was a carriage return character in the string
 	je output_chars_cr		; If so reset to column 0
 	cmp al, 9
 	je output_chars_tab
@@ -230,12 +230,15 @@ output_chars_nextchar:
 
 output_chars_newline:
 	mov al, [rsi]
-	cmp al, 10
+	cmp al, 0x0A
 	je output_chars_newline_skip_LF
 	call output_newline
 	jmp output_chars_nextchar
 
 output_chars_cr:
+	mov al, [rsi]			; Check the next character
+	cmp al, 0x0A			; Is it a newline?
+	je output_chars_newline		; If so, display a newline and ignore the carriage return
 	push rcx
 	xor eax, eax
 	xor ecx, ecx
