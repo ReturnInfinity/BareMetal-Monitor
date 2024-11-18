@@ -588,9 +588,9 @@ ui_api:
 	je ui_api_set_cursor_row
 	cmp cl, 0x14			; Set cursor column
 	je ui_api_set_cursor_col
-	cmp cl, 0x05			; Set cursor max row
+	cmp cl, 0x15			; Set cursor max row
 	je ui_api_set_cursor_row_max
-	cmp cl, 0x06			; Set cursor max column
+	cmp cl, 0x16			; Set cursor max column
 	je ui_api_set_cursor_col_max
 
 	ret
