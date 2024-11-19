@@ -571,9 +571,9 @@ ui_api:
 ; To save memory, the functions are placed in 16-bit frames
 	lea ecx, [ui_api_table+ecx*2]	; extract function from table by index
 	mov cx, [ecx]			; limit jump to 16-bit
-	jmp rcx					; jump to function
+	jmp rcx				; jump to function
 
-ui_ret:
+ui_api_ret:
 	ret
 
 ui_api_get_fg:
@@ -633,27 +633,27 @@ ui_api_set_cursor_col_max:
 ; -----------------------------------------------------------------------------
 ; UI API index table
 ui_api_table:
-	dw ui_ret						; 0x00
-	dw ui_api_get_fg				; 0x01
-	dw ui_api_get_bg				; 0x02
-	dw ui_api_get_cursor_row		; 0x03
-	dw ui_api_get_cursor_col		; 0x04
+	dw ui_api_ret			; 0x00
+	dw ui_api_get_fg		; 0x01
+	dw ui_api_get_bg		; 0x02
+	dw ui_api_get_cursor_row	; 0x03
+	dw ui_api_get_cursor_col	; 0x04
 	dw ui_api_get_cursor_row_max	; 0x05
 	dw ui_api_get_cursor_col_max	; 0x06
-	dw ui_ret						; 0x07
-	dw ui_ret						; 0x08
-	dw ui_ret						; 0x09
-	dw ui_ret						; 0x0A
-	dw ui_ret						; 0x0B
-	dw ui_ret						; 0x0C
-	dw ui_ret						; 0x0D
-	dw ui_ret						; 0x0E
-	dw ui_ret						; 0x0F
-	dw ui_ret						; 0x10
-	dw ui_api_set_fg				; 0x11
-	dw ui_api_set_bg				; 0x12
-	dw ui_api_set_cursor_row		; 0x13
-	dw ui_api_set_cursor_col		; 0x14
+	dw ui_api_ret			; 0x07
+	dw ui_api_ret			; 0x08
+	dw ui_api_ret			; 0x09
+	dw ui_api_ret			; 0x0A
+	dw ui_api_ret			; 0x0B
+	dw ui_api_ret			; 0x0C
+	dw ui_api_ret			; 0x0D
+	dw ui_api_ret			; 0x0E
+	dw ui_api_ret			; 0x0F
+	dw ui_api_ret			; 0x10
+	dw ui_api_set_fg		; 0x11
+	dw ui_api_set_bg		; 0x12
+	dw ui_api_set_cursor_row	; 0x13
+	dw ui_api_set_cursor_col	; 0x14
 	dw ui_api_set_cursor_row_max	; 0x15
 	dw ui_api_set_cursor_col_max	; 0x16
 ; -----------------------------------------------------------------------------
