@@ -19,6 +19,31 @@ start:
 	call ui_init			; Otherwise run ui_init
 	mov byte [firstrun], 0		; And clear the first run flag
 
+	; Move RAM drive image to proper location (if it was provided)
+	cmp byte [0x410000], 0		; Check for a non-zero value
+	je skip_ramdrive		; If zero, then there is no RAM drive image
+	mov rsi, 0x00110104		; Kernel value for MemAmount
+	mov eax, [rsi]
+	sub eax, 2			; Remove 2 MiB of available RAM
+	mov [rsi], eax
+	; Crawl the upper page map and remove the highest 2MiB page
+	mov rsi, 0x20000
+check_next:
+	mov rbx, rax
+	lodsq
+	cmp rax, 0
+	jne check_next
+	xor bl, bl
+	mov [RAMDriveLocation], rbx
+	xor eax, eax
+	sub rsi, 16			; Jump back to the last valid record
+	mov [rsi], rax			; Overwrite it
+	mov rsi, 0x410000		; Copy RAM Drive image from here
+	mov rdi, rbx			; to here
+	mov rcx, 262144			; 2MiB's worth of quadwords
+	rep movsq
+skip_ramdrive:
+
 	; Output system details
 
 	; Output core count and speed
@@ -209,6 +234,52 @@ cls:
 	jmp poll_nonewline
 
 dir:
+	mov rax, [RAMDriveLocation]
+	cmp rax, 0
+	je dir_skipramfs
+
+dir_ramfs:
+	mov rsi, dirmsgramfs
+	call ui_output
+	mov rsi, dirmsg
+	call ui_output
+	mov rsi, [RAMDriveLocation]
+	mov rax, 1
+
+dir_ramfs_next:
+	cmp byte [rsi], 0		; 0 means we're at the end of the list
+	je dir_ramfs_end
+	push rsi
+	mov rsi, newline
+	call ui_output
+	mov rdi, temp_string1
+	mov rsi, rdi
+	call string_from_int
+	call ui_output
+	mov rsi, tab
+	call ui_output
+	add al, 1
+	pop rsi
+	
+	call ui_output			; Output file name
+	add rsi, 48
+	push rax
+	mov rax, [rsi]
+	push rsi
+	mov rsi, tab
+	call ui_output
+	mov rdi, temp_string1
+	mov rsi, rdi
+	call string_from_int
+	call ui_output
+	pop rsi
+	pop rax
+	add rsi, 16			; Next entry
+	jmp dir_ramfs_next
+	
+dir_ramfs_end:
+
+dir_skipramfs:
 	mov al, [FSType]
 	cmp al, 0
 	je noFS
@@ -226,10 +297,10 @@ dir_bmfs:
 	mov rdx, 0
 	call [b_storage_read]		; Load the 4K BMFS file table
 	mov rax, 1
-dir_next:
-	cmp byte [rsi], 0		; 0 means we're at the end of the list
-	je dir_end
 
+dir_bmfs_next:
+	cmp byte [rsi], 0		; 0 means we're at the end of the list
+	je dir_bmfs_end
 	push rsi
 	mov rsi, newline
 	call ui_output
@@ -256,8 +327,8 @@ dir_next:
 	pop rsi
 	pop rax
 	add rsi, 16			; Next entry
-	jmp dir_next
-dir_end:
+	jmp dir_bmfs_next
+dir_bmfs_end:
 	jmp poll
 
 print_ver:
@@ -1007,12 +1078,14 @@ toomanyargs:		db 10, 'Too many arguments', 0
 invalidargs:		db 10, 'Invalid argument(s)', 0
 dirmsg:			db 10, '#       Name            Size', 10, '-----------------------------', 0
 dirmsgbmfs:		db 10, 'BMFS', 0
+dirmsgramfs:		db 10, 'RAMFS', 0
 dump_b_string:		db ' | '
 dump_b_chars:		db '                ', 0
 
 ; Variables
 align 16
 ProgramLocation:	dq 0xFFFF800000000000
+RAMDriveLocation:	dq 0
 UEFI_Disk_Offset:	dq 32768
 args:			db 0
 FSType: 		db 0		; File System
