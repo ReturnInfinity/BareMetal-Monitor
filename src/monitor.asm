@@ -167,6 +167,10 @@ poll_nonewline:
 	call string_compare
 	jc load
 
+	mov rsi, command_loadr
+	call string_compare
+	jc loadr
+
 	mov rsi, command_peek
 	call string_compare
 	jc peek
@@ -392,6 +396,37 @@ noFS:
 	call ui_output
 	jmp poll
 
+loadr:
+	mov rsi, message_load
+	call ui_output
+	mov rdi, temp_string
+	mov rsi, rdi
+	mov rcx, 2
+	call ui_input
+	call string_to_int
+	sub rax, 1			; Files are indexed from 0
+	mov rcx, rax			; File #
+	mov rsi, [RAMDriveLocation]
+	shl rcx, 6
+	add rsi, rcx			; RDI points to start of BMFS entry
+	mov al, [rsi]			; Load first character of file name
+	cmp al, 1			; 0x00 or 0x01 are invalid
+	jle load_notfound
+	add rsi, 32			; Offset to starting block # in BMFS file record
+	mov rax, [rsi]			; Starting block
+	shl rax, 10			; Shift left by 10 to convert to 1K Blocks
+	add rsi, 16			; Skip to File Size value
+	mov rcx, [rsi]			; File size in bytes
+	cmp rcx, 0			; Is the file empty?
+	je poll				; If so, no need to load it
+	; Copy RAM drive file to program RAM
+	mov rsi, [RAMDriveLocation]
+	add rsi, rax
+	mov rdi, [ProgramLocation]
+	rep movsb
+	jmp poll
+	
+	
 dump:
 	cmp byte [args], 4
 	jl insuf
@@ -1053,6 +1088,7 @@ command_dir:		db 'dir', 0
 command_dump:		db 'dump', 0
 command_ver:		db 'ver', 0
 command_load:		db 'load', 0
+command_loadr:		db 'loadr', 0
 command_peek:		db 'peek', 0
 command_poke:		db 'poke', 0
 command_help:		db 'help', 0
