@@ -187,10 +187,6 @@ poll_nonewline:
 	call string_compare
 	jc testzone
 
-	mov rsi, command_app
-	call string_compare
-	jc app_copy
-
 	mov rsi, command_shutdown
 	call string_compare
 	jc shutdown
@@ -213,16 +209,6 @@ testzone:
 ;	add qword [0x1e8000], 1		; Increment the packet counter
 ;tst_loop_nodata:
 ;	jmp tst_loop
-	jmp poll
-
-; A hidden command the copies the trailing data to 0xFFFF800000000000
-; dd if=program.app of=BOOTX64.EFI bs=1024 seek=42 conv=notrunc > /dev/null 2>&1
-; program.app must be not be larger than 22,528 bytes
-app_copy:
-	mov rsi, 0x40A800		; 42KiB into loaded 64KiB of data
-	mov rdi, 0x400000		; Virtual Address 0xFFFF800000000000
-	mov rcx, 22528			; Copy 22KiB
-	rep movsb
 	jmp poll
 
 shutdown:
@@ -1093,7 +1079,6 @@ command_peek:		db 'peek', 0
 command_poke:		db 'poke', 0
 command_help:		db 'help', 0
 command_test:		db 'test', 0
-command_app:		db 'app', 0
 command_shutdown:	db 'shutdown', 0
 cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
