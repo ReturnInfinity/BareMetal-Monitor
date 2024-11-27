@@ -1,5 +1,5 @@
 // =============================================================================
-// BareMetal -- a 64-bit OS written in Assembly for x86-64 systems
+// BareMetal Monitor UI
 // Copyright (C) 2008-2024 Return Infinity -- see LICENSE.TXT
 //
 // Version 1.0
