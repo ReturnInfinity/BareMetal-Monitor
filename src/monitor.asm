@@ -122,7 +122,38 @@ nextMAC:
 bmfs:
 	mov al, 'B'
 	mov [FSType], al
-	jmp poll
+
+	; Detect if there is only one program on the filesystem
+	mov rdi, temp_string
+	mov rsi, rdi
+	mov rax, 1
+	add rax, [UEFI_Disk_Offset]
+	mov rcx, 1
+	mov rdx, 0
+	call [b_storage_read]		; Load the 4K BMFS file table
+	add rsi, 64			; Is there a second file entry?
+	mov al, [rsi]
+	cmp al, 0
+	jne poll			; If so, skip to poll
+	sub rsi, 64			; Is there a first file entry?
+	mov al, [rsi]
+	cmp al, 0
+	je poll				; If not, skip to poll
+
+	; There is a single program, load and execute it
+	add rdi, 32			; Offset to starting block # in BMFS file record
+	mov rax, [rdi]
+	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
+	add rdi, 16			; Skip to File Size value
+	mov rcx, [rdi]			; File size in bytes
+	; load to memory, use RAX for starting sector
+	add rax, [UEFI_Disk_Offset]
+	mov rdi, [ProgramLocation]
+	add rcx, 4095			; Add 1-byte less of a full sector amount
+	shr rcx, 12			; Quick divide by 4096
+	mov rdx, 0
+	call [b_storage_read]		; Load program
+	call [ProgramLocation]		; Execute program
 
 poll:
 	mov rsi, newline
@@ -250,7 +281,7 @@ dir_ramfs_next:
 	call ui_output
 	add al, 1
 	pop rsi
-	
+
 	call ui_output			; Output file name
 	add rsi, 48
 	push rax
@@ -266,7 +297,7 @@ dir_ramfs_next:
 	pop rax
 	add rsi, 16			; Next entry
 	jmp dir_ramfs_next
-	
+
 dir_ramfs_end:
 
 dir_skipramfs:
