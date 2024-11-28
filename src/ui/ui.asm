@@ -568,6 +568,7 @@ string_length:
 ;	All other registers preserved
 ui_api:
 ; Use CL register as an index to the function table
+	and ecx, 0xFF			; Keep lower 8-bits only
 ; To save memory, the functions are placed in 16-bit frames
 	lea ecx, [ui_api_table+ecx*2]	; extract function from table by index
 	mov cx, [ecx]			; limit jump to 16-bit
@@ -579,7 +580,7 @@ ui_api_ret:
 ui_api_get_fg:
 	mov eax, [FG_Color]
 	ret
-	
+
 ui_api_get_bg:
 	mov eax, [BG_Color]
 	ret
