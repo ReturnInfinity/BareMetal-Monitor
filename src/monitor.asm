@@ -123,7 +123,7 @@ bmfs:
 	mov al, 'B'
 	mov [FSType], al
 
-	; Detect if there is only one program on the filesystem
+	; Detect if first file is called 'init.app'
 	mov rdi, temp_string
 	mov rsi, rdi
 	mov rax, 1
@@ -131,16 +131,12 @@ bmfs:
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]		; Load the 4K BMFS file table
-	add rsi, 64			; Is there a second file entry?
-	mov al, [rsi]
-	cmp al, 0
-	jne poll			; If so, skip to poll
-	sub rsi, 64			; Is there a first file entry?
-	mov al, [rsi]
-	cmp al, 0
-	je poll				; If not, skip to poll
 
-	; There is a single program, load and execute it
+	mov rsi, init_app_str
+	call string_compare 		; Is the first file called 'init.app'?
+	jnc poll
+
+	; First file is called 'init.app' so load and execute it
 	add rdi, 32			; Offset to starting block # in BMFS file record
 	mov rax, [rdi]
 	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
@@ -1099,6 +1095,7 @@ message_load:		db 10, 'Enter file number: ', 0
 message_unknown:	db 10, 'Unknown command', 0
 message_noFS:		db 10, 'No filesystem detected', 0
 message_help:		db 10, 'Available commands:', 10, 'cls  - clear the screen', 10, 'dir  - Show programs currently on disk', 10, 'load - Load a program to memory (you will be prompted for the program number)', 10, 'exec - Run the program currently in memory', 10, 'ver  - Show the system version', 10, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 10, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 10, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 0
+init_app_str:		db 'init.app', 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
