@@ -123,7 +123,7 @@ bmfs:
 	mov al, 'B'
 	mov [FSType], al
 
-	; Detect if there is only one program on the filesystem
+	; Detect if there is an 'init.app' on the filesystem
 	mov rdi, temp_string
 	mov rsi, rdi
 	mov rax, 1
@@ -131,16 +131,15 @@ bmfs:
 	mov rcx, 1
 	mov rdx, 0
 	call [b_storage_read]		; Load the 4K BMFS file table
-	add rsi, 64			; Is there a second file entry?
-	mov al, [rsi]
-	cmp al, 0
-	jne poll			; If so, skip to poll
-	sub rsi, 64			; Is there a first file entry?
-	mov al, [rsi]
-	cmp al, 0
-	je poll				; If not, skip to poll
-
-	; There is a single program, load and execute it
+	mov rsi, initapp
+	sub rdi, 64
+bmfs_next:
+	add rdi, 64
+	cmp byte [rdi], 0
+	je poll
+	call string_compare
+	jnc bmfs_next
+	; There is an 'init.app' program, load and execute it
 	add rdi, 32			; Offset to starting block # in BMFS file record
 	mov rax, [rdi]
 	shl rax, 9			; Shift left by 9 to convert 2M block to 4K sector
@@ -1131,6 +1130,7 @@ invalidargs:		db 10, 'Invalid argument(s)', 0
 dirmsg:			db 10, '#       Name            Size', 10, '-----------------------------', 0
 dirmsgbmfs:		db 10, 'BMFS', 0
 dirmsgramfs:		db 10, 'RAMFS', 0
+initapp:		db 'init.app', 0
 dump_b_string:		db ' | '
 dump_b_chars:		db '                ', 0
 
