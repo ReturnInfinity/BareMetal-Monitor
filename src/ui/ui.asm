@@ -1,6 +1,6 @@
 ; =============================================================================
 ; BareMetal Monitor UI
-; Copyright (C) 2008-2024 Return Infinity -- see LICENSE.TXT
+; Copyright (C) 2008-2025 Return Infinity -- see LICENSE.TXT
 ;
 ; This file contains all of the functions needed for displaying a text UI in
 ; the graphics mode configured by the OS loader.

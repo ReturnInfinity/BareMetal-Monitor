@@ -1,6 +1,6 @@
 ; =============================================================================
 ; BareMetal Monitor
-; Copyright (C) 2008-2024 Return Infinity -- see LICENSE.TXT
+; Copyright (C) 2008-2025 Return Infinity -- see LICENSE.TXT
 ;
 ; This file contains all of the functions for the monitor CLI. It must be
 ; attached to the end of the BareMetal kernel.
