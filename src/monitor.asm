@@ -113,7 +113,7 @@ nextMAC:
 	mov rdx, 0			; Drive 0
 	mov rdi, temp_string
 	mov rsi, rdi
-	call [b_storage_read]
+	call [b_nvs_read]
 	mov eax, [rsi+1024]
 	cmp eax, 0x53464d42		; "BMFS"
 	je bmfs
@@ -130,7 +130,7 @@ bmfs:
 	add rax, [UEFI_Disk_Offset]
 	mov rcx, 1
 	mov rdx, 0
-	call [b_storage_read]		; Load the 4K BMFS file table
+	call [b_nvs_read]		; Load the 4K BMFS file table
 	mov rsi, initapp
 	sub rdi, 64
 bmfs_next:
@@ -151,7 +151,7 @@ bmfs_next:
 	add rcx, 4095			; Add 1-byte less of a full sector amount
 	shr rcx, 12			; Quick divide by 4096
 	mov rdx, 0
-	call [b_storage_read]		; Load program
+	call [b_nvs_read]		; Load program
 	call [ProgramLocation]		; Execute program
 
 poll:
@@ -315,7 +315,7 @@ dir_bmfs:
 	add rax, [UEFI_Disk_Offset]
 	mov rcx, 1
 	mov rdx, 0
-	call [b_storage_read]		; Load the 4K BMFS file table
+	call [b_nvs_read]		; Load the 4K BMFS file table
 	mov rax, 1
 
 dir_bmfs_next:
@@ -378,7 +378,7 @@ load_bmfs:
 	add rax, [UEFI_Disk_Offset]
 	mov rcx, 1
 	mov rdx, 0
-	call [b_storage_read]
+	call [b_nvs_read]
 	; offset to file number, starting sector, and file size
 	pop rcx				; Restore the file #
 	shl rcx, 6
@@ -399,7 +399,7 @@ load_bmfs:
 	add rcx, 4095			; Add 1-byte less of a full sector amount
 	shr rcx, 12			; Quick divide by 4096
 	mov rdx, 0
-	call [b_storage_read]
+	call [b_nvs_read]
 	jmp poll
 
 load_notfound:
