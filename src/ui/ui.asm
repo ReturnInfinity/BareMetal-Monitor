@@ -13,73 +13,6 @@
 BITS 64
 
 
-; -----------------------------------------------------------------------------
-; ui_init -- Initialize a graphical user interface
-;  IN:	Nothing
-; OUT:	Nothing
-ui_init:
-	push rdx
-	push rcx
-	push rax
-
-	; Gather screen values from kernel
-	mov rcx, SCREEN_LFB_GET		; 64-bit - Base address of LFB
-	call [b_system]
-	mov [VideoBase], rax
-	mov [LastLine], rax		; Rolling line marker
-	xor eax, eax
-	mov rcx, SCREEN_X_GET		; 16-bit - X resolution
-	call [b_system]
-	mov [VideoX], ax
-	mov rcx, SCREEN_Y_GET		; 16-bit - Y resolution
-	call [b_system]
-	mov [VideoY], ax
-	mov rcx, SCREEN_PPSL_GET	; 16-bit - Pixels per scan line
-	call [b_system]
-	mov [VideoPPSL], eax
-
-	; Calculate screen parameters
-	xor eax, eax
-	xor ecx, ecx
-	mov ax, [VideoX]
-	mov cx, [VideoY]
-	mul ecx
-	mov [Screen_Pixels], eax
-	mov ecx, 4
-	mul ecx
-	mov [Screen_Bytes], eax
-
-	call screen_clear
-
-	; Calculate display parameters based on font dimensions
-	xor eax, eax
-	xor edx, edx
-	xor ecx, ecx
-	mov ax, [VideoX]
-	mov cl, [font_width]
-	div cx				; Divide VideoX by font_width
-	mov [Screen_Cols], ax
-	xor eax, eax
-	xor edx, edx
-	xor ecx, ecx
-	mov ax, [VideoY]
-	mov cl, [font_height]
-	div cx				; Divide VideoY by font_height
-	mov [Screen_Rows], ax
-
-	; Overwrite the kernel b_output function so output goes to the screen instead of the serial port
-	mov rax, output_chars
-	mov [0x100018], rax
-
-	; Set b_user call entry point
-	mov rax, ui_api
-	mov [0x100048], rax
-
-	pop rax
-	pop rcx
-	pop rdx
-	ret
-; -----------------------------------------------------------------------------
 
 
 ; -----------------------------------------------------------------------------
@@ -97,9 +30,9 @@ ui_input:
 	xor ecx, ecx			; Offset from start
 
 ui_input_more:
-	mov al, '_'			; Cursor character
-	call output_char		; Output the cursor
-	call dec_cursor			; Set the cursor back by 1
+;	mov al, '_'			; Cursor character
+;	call output_char		; Output the cursor
+;	call dec_cursor			; Set the cursor back by 1
 ui_input_halt:
 	hlt				; Halt until an interrupt is received
 	call [b_input]			; Returns the character entered. 0 if there was none
@@ -117,16 +50,17 @@ ui_input_process:
 	je ui_input_more		; Jump if we have (should beep as well)
 	stosb				; Store AL at RDI and increment RDI by 1
 	inc rcx				; Increment the counter
+;	push rax
+;	mov al, 0x0E			; Cursor character
+;	call output_char		; Output the cursor
+;	pop rax
 	call output_char		; Display char
 	jmp ui_input_more
 
 ui_input_backspace:
 	test rcx, rcx			; backspace at the beginning? get a new char
 	jz ui_input_more
-	mov al, ' '			; 0x20 is the character for a space
-	call output_char		; Write over the last typed character with the space
-	call dec_cursor			; Decrement the cursor again
-	call dec_cursor			; Decrement the cursor
+	call output_char		; Output backspace as a character
 	dec rdi				; go back one in the string
 	mov byte [rdi], 0x00		; NULL out the char
 	dec rcx				; decrement the counter by one
@@ -153,140 +87,9 @@ ui_output:
 	push rcx
 
 	call string_length		; Calculate the length of the provided string
-	call output_chars		; Output the required number of characters
+	call [b_output]			; Output the required number of characters
 
 	pop rcx
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; inc_cursor -- Increment the cursor by one, scroll if needed
-;  IN:	Nothing
-; OUT:	All registers preserved
-inc_cursor:
-	push rax
-
-	inc word [Screen_Cursor_Col]	; Increment the current cursor column
-	mov ax, [Screen_Cursor_Col]
-	cmp ax, [Screen_Cols]		; Compare it to the # of columns for the screen
-	jne inc_cursor_done		; If not equal we are done
-	mov word [Screen_Cursor_Col], 0	; Reset column to 0
-	inc word [Screen_Cursor_Row]	; Increment the current cursor row
-	mov ax, [Screen_Cursor_Row]
-	cmp ax, [Screen_Rows]		; Compare it to the # of rows for the screen
-	jne inc_cursor_done		; If not equal we are done
-	mov word [Screen_Cursor_Row], 0
-inc_cursor_done:
-	pop rax
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; dec_cursor -- Decrement the cursor by one
-;  IN:	Nothing
-; OUT:	All registers preserved
-dec_cursor:
-	push rax
-
-	cmp word [Screen_Cursor_Col], 0	; Compare the current cursor column to 0
-	jne dec_cursor_done		; If not equal we are done
-	dec word [Screen_Cursor_Row]	; Otherwise decrement the row
-	mov ax, [Screen_Cols]		; Get the total colums and save it as the current
-	mov word [Screen_Cursor_Col], ax
-
-dec_cursor_done:
-	dec word [Screen_Cursor_Col]	; Decrement the cursor as usual
-
-	pop rax
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; output_chars -- Displays text
-;  IN:	RSI = message location (an ASCII string, not zero-terminated)
-;	RCX = number of chars to print
-; OUT:	All registers preserved
-output_chars:
-	push rsi
-	push rcx
-	push rax
-
-output_chars_nextchar:
-	cmp rcx, 0
-	jz output_chars_done
-	dec rcx
-	lodsb				; Get char from string and store in AL
-	cmp al, 0x0A			; LF - Check if there was a newline (aka line feed) character in the string
-	je output_chars_newline		; If so then we print a new line
-	cmp al, 0x0D			; CR - Check if there was a carriage return character in the string
-	je output_chars_cr		; If so reset to column 0
-	cmp al, 9
-	je output_chars_tab
-	call output_char
-	jmp output_chars_nextchar
-
-output_chars_newline:
-	mov al, [rsi]
-	cmp al, 0x0A
-	je output_chars_newline_skip_LF
-	call output_newline
-	jmp output_chars_nextchar
-
-output_chars_cr:
-	mov al, [rsi]			; Check the next character
-	cmp al, 0x0A			; Is it a newline?
-	je output_chars_newline		; If so, display a newline and ignore the carriage return
-	push rcx
-	xor eax, eax
-	xor ecx, ecx
-	mov [Screen_Cursor_Col], ax
-	mov cx, [Screen_Cols]
-	mov al, ' '
-output_chars_cr_clearline:
-	call output_char
-	dec cx
-	jnz output_chars_cr_clearline
-	dec word [Screen_Cursor_Row]
-	xor eax, eax
-	mov [Screen_Cursor_Col], ax
-	pop rcx
-	jmp output_chars_nextchar
-
-output_chars_newline_skip_LF:
-	test rcx, rcx
-	jz output_chars_newline_skip_LF_nosub
-	dec rcx
-
-output_chars_newline_skip_LF_nosub:
-	inc rsi
-	call output_newline
-	jmp output_chars_nextchar
-
-output_chars_tab:
-	push rcx
-	mov ax, [Screen_Cursor_Col]	; Grab the current cursor X value (ex 7)
-	mov cx, ax
-	add ax, 8			; Add 8 (ex 15)
-	shr ax, 3			; Clear lowest 3 bits (ex 8)
-	shl ax, 3			; Bug? 'xor al, 7' doesn't work...
-	sub ax, cx			; (ex 8 - 7 = 1)
-	mov cx, ax
-	mov al, ' '
-
-output_chars_tab_next:
-	call output_char
-	dec cx
-	jnz output_chars_tab_next
-	pop rcx
-	jmp output_chars_nextchar
-
-output_chars_done:
-	pop rax
-	pop rcx
-	pop rsi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -296,161 +99,16 @@ output_chars_done:
 ;  IN:	AL  = char to display
 ; OUT:	All registers preserved
 output_char:
-	call glyph
-	call inc_cursor
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; output_newline -- Reset cursor to start of next line and wrap if needed
-;  IN:	Nothing
-; OUT:	All registers preserved
-output_newline:
-	push rax
-
-	mov word [Screen_Cursor_Col], 0	; Reset column to 0
-	mov ax, [Screen_Rows]		; Grab max rows on screen
-	dec ax				; and subtract 1
-	cmp ax, [Screen_Cursor_Row]	; Is the cursor already on the bottom row?
-	je output_newline_wrap		; If so, then wrap
-	inc word [Screen_Cursor_Row]	; If not, increment the cursor to next row
-	jmp output_newline_done
-
-output_newline_wrap:
-	mov word [Screen_Cursor_Row], 0
-
-output_newline_done:
-	call draw_line
-	pop rax
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; glyph_put -- Put a glyph on the screen at the cursor location
-;  IN:	AL  = char to display
-; OUT:	All registers preserved
-glyph:
 	push rsi
-	push rdx
 	push rcx
-	push rbx
-	push rax
 
-	and eax, 0x000000FF
-	cmp al, 0x20
-	jl hidden
-	cmp al, 127
-	jg hidden
-	sub rax, 0x20
-	jmp load_char
-hidden:
-	mov al, 0
-load_char:
+	mov [tchar], al
+	mov rsi, tchar
+	mov ecx, 1
+	call [b_output]
 
-	mov ecx, font_h			; Font height
-	mul ecx
-	mov rsi, font_data
-	add rsi, rax			; add offset to correct glyph
-
-; Calculate pixel co-ordinates for character
-	xor ebx, ebx
-	xor edx, edx
-	xor eax, eax
-	mov ax, [Screen_Cursor_Row]
-	mov cx, font_h			; Font height
-	mul cx
-	mov bx, ax
-	shl ebx, 16
-	xor edx, edx
-	xor eax, eax
-	mov ax, [Screen_Cursor_Col]
-	mov cx, font_w			; Font width
-	mul cx
-	mov bx, ax
-
-	xor eax, eax
-	xor ecx, ecx			; x counter
-	xor edx, edx			; y counter
-
-glyph_nextline:
-	lodsb				; Load a line
-
-glyph_nextpixel:
-	cmp ecx, font_w			; Font width
-	je glyph_bailout		; Glyph row complete
-	rol al, 1
-	bt ax, 0
-	jc glyph_pixel
-	push rax
-	mov eax, [BG_Color]
-	call pixel
-	pop rax
-	jmp glyph_skip
-
-glyph_pixel:
-	push rax
-	mov eax, [FG_Color]
-	call pixel
-	pop rax
-
-glyph_skip:
-	inc ebx
-	inc ecx
-	jmp glyph_nextpixel
-
-glyph_bailout:
-	xor ecx, ecx
-	sub ebx, font_w			; column start
-	add ebx, 0x00010000		; next row
-	inc edx
-	cmp edx, font_h			; Font height
-	jne glyph_nextline
-
-glyph_done:
-	pop rax
-	pop rbx
 	pop rcx
-	pop rdx
 	pop rsi
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; pixel -- Put a pixel on the screen
-;  IN:	EBX = Packed X & Y coordinates (YYYYXXXX)
-;	EAX = Pixel Details (AARRGGBB)
-; OUT:	All registers preserved
-pixel:
-	push rdi
-	push rdx
-	push rcx
-	push rbx
-	push rax
-
-	; Calculate offset in video memory and store pixel
-	push rax			; Save the pixel details
-	mov rax, rbx
-	shr eax, 16			; Isolate Y co-ordinate
-	xor ecx, ecx
-	mov cx, [VideoPPSL]
-	mul ecx				; Multiply Y by VideoPPSL
-	and ebx, 0x0000FFFF		; Isolate X co-ordinate
-	add eax, ebx			; Add X
-	mov rbx, rax			; Save the offset to RBX
-	mov rdi, [VideoBase]		; Store the pixel to video memory
-	pop rax				; Restore pixel details
-	shl ebx, 2			; Quickly multiply by 4
-	add rdi, rbx			; Add offset in video memory
-	stosd				; Output pixel to video memory
-
-	pop rax
-	pop rbx
-	pop rcx
-	pop rdx
-	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -660,11 +318,12 @@ ui_api_table:
 ; -----------------------------------------------------------------------------
 
 
-; Only 1 font may be used
-;%include 'ui/fonts/smol.fnt' ; 8x4
-%include 'ui/fonts/baremetal.fnt' ; 12x6
-;%include 'ui/fonts/departuremono.fnt' ; 14x7
-;%include 'ui/fonts/ibm.fnt' ; 16x8
+font_height: db 12
+font_width: db 6
+font_h equ 12
+font_w equ 6
+
+font_data:
 
 ; Variables
 align 16

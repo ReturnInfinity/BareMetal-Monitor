@@ -9,15 +9,14 @@
 
 BITS 64
 ORG 0x001E0000
-MONITORSIZE equ 8192			; Pad Monitor to this length
+MONITORSIZE equ 6144			; Pad Monitor to this length
 
 %include 'api/libBareMetal.asm'
 
 start:
 	cmp byte [firstrun], 1		; Check if the first run flag is set
 	jne poll			; If not, jump to poll
-	call ui_init			; Otherwise run ui_init
-	mov byte [firstrun], 0		; And clear the first run flag
+	mov byte [firstrun], 0		; Otherwise clear the first run flag
 
 	; Move RAM drive image to proper location (if it was provided)
 	cmp byte [0x410000], 0		; Check for a non-zero value
