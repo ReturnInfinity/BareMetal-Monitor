@@ -13,8 +13,6 @@
 BITS 64
 
 
-
-
 ; -----------------------------------------------------------------------------
 ; ui_input -- Take string from keyboard entry
 ;  IN:	RDI = location where string will be stored
@@ -30,9 +28,10 @@ ui_input:
 	xor ecx, ecx			; Offset from start
 
 ui_input_more:
-;	mov al, '_'			; Cursor character
-;	call output_char		; Output the cursor
-;	call dec_cursor			; Set the cursor back by 1
+	mov al, '_'			; Cursor character
+	call output_char		; Output the cursor
+	mov al, 0x03			; Decrement cursor
+	call output_char		; Output the cursor
 ui_input_halt:
 	hlt				; Halt until an interrupt is received
 	call [b_input]			; Returns the character entered. 0 if there was none
@@ -50,17 +49,18 @@ ui_input_process:
 	je ui_input_more		; Jump if we have (should beep as well)
 	stosb				; Store AL at RDI and increment RDI by 1
 	inc rcx				; Increment the counter
-;	push rax
-;	mov al, 0x0E			; Cursor character
-;	call output_char		; Output the cursor
-;	pop rax
 	call output_char		; Display char
 	jmp ui_input_more
 
 ui_input_backspace:
 	test rcx, rcx			; backspace at the beginning? get a new char
 	jz ui_input_more
+	mov al, ' '
 	call output_char		; Output backspace as a character
+	mov al, 0x03			; Decrement cursor
+	call output_char		; Output the cursor
+	mov al, 0x03			; Decrement cursor
+	call output_char		; Output the cursor
 	dec rdi				; go back one in the string
 	mov byte [rdi], 0x00		; NULL out the char
 	dec rcx				; decrement the counter by one
@@ -109,34 +109,6 @@ output_char:
 
 	pop rcx
 	pop rsi
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; screen_clear -- Clear the screen
-;  IN:	Nothing
-; OUT:	All registers preserved
-screen_clear:
-	push rdi
-	push rcx
-	push rax
-
-	mov word [Screen_Cursor_Col], 0
-	mov word [Screen_Cursor_Row], 0
-
-	; Set the Frame Buffer to the background colour
-	mov rdi, [VideoBase]
-	mov eax, [BG_Color]
-	mov ecx, [Screen_Bytes]
-	shr ecx, 2			; Quick divide by 4
-	rep stosd
-
-	call draw_line
-
-	pop rax
-	pop rcx
-	pop rdi
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -218,112 +190,9 @@ string_length:
 ; -----------------------------------------------------------------------------
 
 
-; -----------------------------------------------------------------------------
-; ui_api -- API calls for the UI
-;  IN:	RCX = API function
-;	RAX = Value (depending on the function)
-; OUT:	RAX = Value (depending on the function)
-;	All other registers preserved
-ui_api:
-; Use CL register as an index to the function table
-	and ecx, 0xFF			; Keep lower 8-bits only
-; To save memory, the functions are placed in 16-bit frames
-	lea ecx, [ui_api_table+ecx*2]	; extract function from table by index
-	mov cx, [ecx]			; limit jump to 16-bit
-	jmp rcx				; jump to function
-
-ui_api_ret:
-	ret
-
-ui_api_get_fg:
-	mov eax, [FG_Color]
-	ret
-
-ui_api_get_bg:
-	mov eax, [BG_Color]
-	ret
-
-ui_api_get_cursor_row:
-	xor eax, eax
-	mov ax, [Screen_Cursor_Row]
-	ret
-
-ui_api_get_cursor_col:
-	xor eax, eax
-	mov ax, [Screen_Cursor_Col]
-	ret
-
-ui_api_get_cursor_row_max:
-	xor eax, eax
-	mov ax, [Screen_Rows]
-	ret
-
-ui_api_get_cursor_col_max:
-	xor eax, eax
-	mov ax, [Screen_Cols]
-	ret
-
-ui_api_set_fg:
-	mov [FG_Color], eax
-	ret
-
-ui_api_set_bg:
-	mov [BG_Color], eax
-	ret
-
-ui_api_set_cursor_row:
-	mov [Screen_Cursor_Row], ax
-	ret
-
-ui_api_set_cursor_col:
-	mov [Screen_Cursor_Col], ax
-	ret
-
-ui_api_set_cursor_row_max:
-	mov [Screen_Rows], ax
-	ret
-
-ui_api_set_cursor_col_max:
-	mov [Screen_Cols], ax
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; UI API index table
-ui_api_table:
-	dw ui_api_ret			; 0x00
-	dw ui_api_get_fg		; 0x01
-	dw ui_api_get_bg		; 0x02
-	dw ui_api_get_cursor_row	; 0x03
-	dw ui_api_get_cursor_col	; 0x04
-	dw ui_api_get_cursor_row_max	; 0x05
-	dw ui_api_get_cursor_col_max	; 0x06
-	dw ui_api_ret			; 0x07
-	dw ui_api_ret			; 0x08
-	dw ui_api_ret			; 0x09
-	dw ui_api_ret			; 0x0A
-	dw ui_api_ret			; 0x0B
-	dw ui_api_ret			; 0x0C
-	dw ui_api_ret			; 0x0D
-	dw ui_api_ret			; 0x0E
-	dw ui_api_ret			; 0x0F
-	dw ui_api_ret			; 0x10
-	dw ui_api_set_fg		; 0x11
-	dw ui_api_set_bg		; 0x12
-	dw ui_api_set_cursor_row	; 0x13
-	dw ui_api_set_cursor_col	; 0x14
-	dw ui_api_set_cursor_row_max	; 0x15
-	dw ui_api_set_cursor_col_max	; 0x16
-; -----------------------------------------------------------------------------
-
-
-font_height: db 12
-font_width: db 6
 font_h equ 12
 font_w equ 6
 
-font_data:
 
 ; Variables
 align 16

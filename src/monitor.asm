@@ -249,7 +249,8 @@ exec:
 	jmp poll
 
 cls:
-	call screen_clear
+	mov al, 0x01
+	call output_char
 	jmp poll_nonewline
 
 dir:
