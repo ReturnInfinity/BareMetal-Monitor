@@ -9,15 +9,14 @@
 
 BITS 64
 ORG 0x001E0000
-MONITORSIZE equ 8192			; Pad Monitor to this length
+MONITORSIZE equ 6144			; Pad Monitor to this length
 
 %include 'api/libBareMetal.asm'
 
 start:
 	cmp byte [firstrun], 1		; Check if the first run flag is set
 	jne poll			; If not, jump to poll
-	call ui_init			; Otherwise run ui_init
-	mov byte [firstrun], 0		; And clear the first run flag
+	mov byte [firstrun], 0		; Otherwise clear the first run flag
 
 	; Move RAM drive image to proper location (if it was provided)
 	cmp byte [0x410000], 0		; Check for a non-zero value
@@ -43,6 +42,10 @@ check_next:
 	mov rcx, 262144			; 2MiB's worth of quadwords
 	rep movsq
 skip_ramdrive:
+
+	; Clear screen
+	mov al, 0x01			; Code for Clear Screen
+	call output_char
 
 	; Output system details
 
@@ -250,7 +253,8 @@ exec:
 	jmp poll
 
 cls:
-	call screen_clear
+	mov al, 0x01
+	call output_char
 	jmp poll_nonewline
 
 dir:
@@ -441,8 +445,7 @@ loadr:
 	mov rdi, [ProgramLocation]
 	rep movsb
 	jmp poll
-	
-	
+
 dump:
 	cmp byte [args], 4
 	jl insuf
@@ -743,6 +746,29 @@ toomany:
 ; Internal functions
 
 ; -----------------------------------------------------------------------------
+; string_length -- Return length of a string
+;  IN:	RSI = string location
+; OUT:	RCX = length (not including the NULL terminator)
+;	All other registers preserved
+string_length:
+	push rdi
+	push rax
+
+	xor ecx, ecx
+	xor eax, eax
+	mov rdi, rsi
+	not rcx
+	repne scasb			; compare byte at RDI to value in AL
+	not rcx
+	dec rcx
+
+	pop rax
+	pop rdi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
 ; string_compare -- See if two strings match
 ;  IN:	RSI = string one
 ;	RDI = string two
@@ -1003,6 +1029,106 @@ string_to_int_invalid:
 
 
 ; -----------------------------------------------------------------------------
+; ui_input -- Take string from keyboard entry
+;  IN:	RDI = location where string will be stored
+;	RCX = maximum number of characters to accept
+; OUT:	RCX = length of string that was received (NULL not counted)
+;	All other registers preserved
+ui_input:
+	push rdi
+	push rdx			; Counter to keep track of max accepted characters
+	push rax
+
+	mov rdx, rcx			; Max chars to accept
+	xor ecx, ecx			; Offset from start
+
+ui_input_more:
+	mov al, '_'			; Cursor character
+	call output_char		; Output the cursor
+	mov al, 0x03			; Decrement cursor
+	call output_char		; Output the cursor
+ui_input_halt:
+	hlt				; Halt until an interrupt is received
+	call [b_input]			; Returns the character entered. 0 if there was none
+	jz ui_input_halt		; If there was no character then halt until an interrupt is received
+ui_input_process:
+	cmp al, 0x1C			; If Enter key pressed, finish
+	je ui_input_done
+	cmp al, 0x0E			; Backspace
+	je ui_input_backspace
+	cmp al, 32			; In ASCII range (32 - 126)?
+	jl ui_input_more
+	cmp al, 126
+	jg ui_input_more
+	cmp rcx, rdx			; Check if we have reached the max number of chars
+	je ui_input_more		; Jump if we have (should beep as well)
+	stosb				; Store AL at RDI and increment RDI by 1
+	inc rcx				; Increment the counter
+	call output_char		; Display char
+	jmp ui_input_more
+
+ui_input_backspace:
+	test rcx, rcx			; backspace at the beginning? get a new char
+	jz ui_input_more
+	mov al, ' '
+	call output_char		; Output backspace as a character
+	mov al, 0x03			; Decrement cursor
+	call output_char		; Output the cursor
+	mov al, 0x03			; Decrement cursor
+	call output_char		; Output the cursor
+	dec rdi				; go back one in the string
+	mov byte [rdi], 0x00		; NULL out the char
+	dec rcx				; decrement the counter by one
+	jmp ui_input_more
+
+ui_input_done:
+	xor al, al
+	stosb				; We NULL terminate the string
+	mov al, ' '
+	call output_char		; Overwrite the cursor
+
+	pop rax
+	pop rdx
+	pop rdi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; ui_output -- Displays text
+;  IN:	RSI = message location (zero-terminated string)
+; OUT:	All registers preserved
+ui_output:
+	push rcx
+
+	call string_length		; Calculate the length of the provided string
+	call [b_output]			; Output the required number of characters
+
+	pop rcx
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; output_char -- Displays a char
+;  IN:	AL  = char to display
+; OUT:	All registers preserved
+output_char:
+	push rsi
+	push rcx
+
+	mov [tchar], al
+	mov rsi, tchar
+	mov ecx, 1
+	call [b_output]
+
+	pop rcx
+	pop rsi
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
 ; hex_string_to_int -- Convert up to 8 hexascii to bin
 ;  IN:	RSI = Location of hex asciiz string
 ; OUT:	RAX = binary value of hex string
@@ -1143,8 +1269,6 @@ args:			db 0
 FSType: 		db 0		; File System
 firstrun:		db 1		; A flag for running ui_init only once
 
-
-%include 'ui/ui.asm'
 
 ; Temporary data
 tchar: db 0, 0, 0
