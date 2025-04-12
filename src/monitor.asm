@@ -445,8 +445,7 @@ loadr:
 	mov rdi, [ProgramLocation]
 	rep movsb
 	jmp poll
-	
-	
+
 dump:
 	cmp byte [args], 4
 	jl insuf
