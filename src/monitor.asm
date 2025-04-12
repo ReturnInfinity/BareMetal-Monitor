@@ -43,6 +43,10 @@ check_next:
 	rep movsq
 skip_ramdrive:
 
+	; Clear screen
+	mov al, 0x01			; Code for Clear Screen
+	call output_char
+
 	; Output system details
 
 	; Output core count and speed
