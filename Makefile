@@ -20,10 +20,11 @@ $(OBJDIR)/monitor.bin: objdir $(SRCDIR)/monitor.asm $(SRCDIR)/api/libBareMetal.a
 	$(NASM) $(SRCDIR)/monitor.asm -o $(OBJDIR)/monitor.bin -l $(OBJDIR)/monitor-debug.txt -I $(SRCDIR)
 
 $(SRCDIR)/api/libBareMetal.asm:
+	mkdir $(SRCDIR)/api
 	curl -s -o $(SRCDIR)/api/libBareMetal.asm $(BAREMETAL_REPO)/api/libBareMetal.asm
 clean:
 	rm -rf $(OBJDIR)
-	rm -f $(SRCDIR)/api/libBareMetal.asm
+	rm -rf $(SRCDIR)/api/
 
 objdir:
 	mkdir -p $(OBJDIR)
