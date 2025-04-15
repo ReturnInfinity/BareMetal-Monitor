@@ -8,6 +8,13 @@
 
 include mk/build.mk
 
+# curl
+ifneq ("/usr/bin/curl,"")
+CURL_EXISTS = 1
+else
+CURL_EXISTS = 0
+endif
+
 OBJDIR=bin
 SRCDIR=src
 BAREMETAL_REPO=https://raw.githubusercontent.com/ReturnInfinity/BareMetal/master
@@ -21,7 +28,12 @@ $(OBJDIR)/monitor.bin: objdir $(SRCDIR)/monitor.asm $(SRCDIR)/api/libBareMetal.a
 
 $(SRCDIR)/api/libBareMetal.asm:
 	mkdir $(SRCDIR)/api
+ifeq ($(CURL_EXISTS), 1)
 	curl -s -o $(SRCDIR)/api/libBareMetal.asm $(BAREMETAL_REPO)/api/libBareMetal.asm
+else
+	wget -q $(BAREMETAL_REPO)/api/libBareMetal.asm
+	mv libBareMetal.asm $(SRCDIR)/api/
+endif
 clean:
 	rm -rf $(OBJDIR)
 	rm -rf $(SRCDIR)/api/
