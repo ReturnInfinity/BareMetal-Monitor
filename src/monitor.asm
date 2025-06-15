@@ -85,8 +85,13 @@ skip_ramdrive:
 	; Output MAC address
 	mov rsi, networkmsg
 	call ui_output
+	xor edx, edx
+
+dispmac:
 	mov rcx, MAC_GET
 	call [b_system]
+	cmp eax, 0
+	je MACdone
 	ror rax, 40
 	mov ecx, 5			; Display the first 5 with separators after
 nextMAC:
@@ -98,6 +103,15 @@ nextMAC:
 	test ecx, ecx
 	jnz nextMAC
 	call dump_al			; Display the last
+	inc edx
+	mov rcx, MAC_GET
+	call [b_system]
+	cmp eax, 0
+	je MACdone
+	mov rsi, networkmacsep
+	call ui_output
+	jmp dispmac
+MACdone:
 	mov rsi, closebracketmsg
 	call ui_output
 
@@ -1239,6 +1253,7 @@ command_shutdown:	db 'shutdown', 0
 cpumsg:			db '[cpu: ', 0
 memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
+networkmacsep:		db ', ', 0
 diskmsg:		db ']  [hdd: ', 0
 mibmsg:			db ' MiB free', 0
 mhzmsg:			db ' MHz', 0
