@@ -172,6 +172,7 @@ bmfs_next:
 	call [ProgramLocation]		; Execute program
 
 poll:
+	; TODO - Check if already on column 0.. if so, skip to poll_nonewline
 	mov rsi, newline
 	call ui_output
 poll_nonewline:
@@ -181,6 +182,8 @@ poll_nonewline:
 	mov rcx, 100
 	call ui_input
 	jrcxz poll			; input stores the number of characters received in RCX
+	mov rsi, newline
+	call ui_output
 	mov rsi, rdi
 	call string_parse		; Remove extra spaces
 	jrcxz poll			; string_parse stores the number of words in RCX
@@ -503,10 +506,6 @@ dump:
 	jmp poll
 
 dump_b:
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
 	mov rax, rsi
 	call dump_rax			; Display the memory address
 	push rsi
@@ -545,10 +544,6 @@ dump_b_newline:
 	jmp dump_b
 
 dump_w:
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
 	mov rax, rsi
 	call dump_rax
 	push rsi
@@ -573,10 +568,6 @@ dump_w_newline:
 	jmp dump_w
 
 dump_d:
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
 	mov rax, rsi
 	call dump_rax
 	push rsi
@@ -601,10 +592,6 @@ dump_d_newline:
 	jmp dump_d
 
 dump_q:
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
 	mov rax, rsi
 	call dump_rax
 	push rsi
@@ -635,10 +622,10 @@ peek:
 	cmp byte [args], 3
 	jl insuf
 	jg toomany
-	push rsi
-	mov rsi, newline
-	call ui_output
-	pop rsi
+;	push rsi
+;	mov rsi, newline
+;	call ui_output
+;	pop rsi
 	mov rsi, temp_string
 	call string_length
 	add rsi, 1
@@ -739,7 +726,7 @@ poke_q:
 	jmp poke_end
 
 poke_end:
-	jmp poll
+	jmp poll_nonewline
 
 help:
 	mov rsi, message_help
@@ -1233,11 +1220,11 @@ hextable:		db '0123456789ABCDEF'
 ; Strings
 
 prompt:			db '> ', 0
-message_ver:		db 10, '1.0', 0
-message_load:		db 10, 'Enter file number: ', 0
-message_unknown:	db 10, 'Unknown command', 0
-message_noFS:		db 10, 'No filesystem detected', 0
-message_help:		db 10, 'Available commands:', 10, 'cls  - clear the screen', 10, 'dir  - Show programs currently on disk', 10, 'load - Load a program to memory (you will be prompted for the program number)', 10, 'exec - Run the program currently in memory', 10, 'ver  - Show the system version', 10, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 10, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 10, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 0
+message_ver:		db '1.0', 0
+message_load:		db 'Enter file number: ', 0
+message_unknown:	db 'Unknown command', 0
+message_noFS:		db 'No filesystem detected', 0
+message_help:		db 'Available commands:', 10, 'cls  - clear the screen', 10, 'dir  - Show programs currently on disk', 10, 'load - Load a program to memory (you will be prompted for the program number)', 10, 'exec - Run the program currently in memory', 10, 'ver  - Show the system version', 10, 'peek - hex mem address and bytes (1, 2, 4, or 8) - ex "peek 200000 8" to read 8 bytes', 10, 'poke - hex mem address and hex value (1, 2, 4, or 8 bytes) - ex "poke 200000 00ABCDEF" to write 4 bytes', 10, 'dump - hex mem address, hex amount, bytes (1, 2, 4, or 8) - ex "dump 100000 10 4"', 0
 command_exec:		db 'exec', 0
 command_cls:		db 'cls', 0
 command_dir:		db 'dir', 0
@@ -1265,12 +1252,12 @@ macsep:			db ':', 0
 dumpsep:		db ': ', 0
 newline:		db 10, 0
 tab:			db 9, 0
-insufargs:		db 10, 'Insufficient argument(s)', 0
-toomanyargs:		db 10, 'Too many arguments', 0
-invalidargs:		db 10, 'Invalid argument(s)', 0
-dirmsg:			db 10, '#       Name            Size', 10, '-----------------------------', 0
-dirmsgbmfs:		db 10, 'BMFS', 0
-dirmsgramfs:		db 10, 'RAMFS', 0
+insufargs:		db 'Insufficient argument(s)', 0
+toomanyargs:		db 'Too many arguments', 0
+invalidargs:		db 'Invalid argument(s)', 0
+dirmsg:			db '#       Name            Size', 10, '-----------------------------', 0
+dirmsgbmfs:		db 'BMFS', 10, 0
+dirmsgramfs:		db 'RAMFS', 10, 0
 initapp:		db 'init.app', 0
 dump_b_string:		db ' | '
 dump_b_chars:		db '                ', 0
