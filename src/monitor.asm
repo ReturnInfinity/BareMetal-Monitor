@@ -539,6 +539,8 @@ dump_b_newline:
 	push rsi
 	mov rsi, dump_b_string
 	call ui_output
+	mov rsi, newline
+	call ui_output
 	pop rsi
 	xor edx, edx			; Reset the value counter
 	jmp dump_b
@@ -565,6 +567,10 @@ dump_w_next:
 	jmp dump_end
 dump_w_newline:
 	xor edx, edx
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
 	jmp dump_w
 
 dump_d:
@@ -589,6 +595,10 @@ dump_d_next:
 	jmp dump_end
 dump_d_newline:
 	xor edx, edx
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
 	jmp dump_d
 
 dump_q:
@@ -613,6 +623,10 @@ dump_q_next:
 	jmp dump_end
 dump_q_newline:
 	xor edx, edx
+	push rsi
+	mov rsi, newline
+	call ui_output
+	pop rsi
 	jmp dump_q
 
 dump_end:
@@ -622,10 +636,6 @@ peek:
 	cmp byte [args], 3
 	jl insuf
 	jg toomany
-;	push rsi
-;	mov rsi, newline
-;	call ui_output
-;	pop rsi
 	mov rsi, temp_string
 	call string_length
 	add rsi, 1
