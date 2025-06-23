@@ -88,7 +88,7 @@ skip_ramdrive:
 	xor edx, edx
 
 dispmac:
-	mov rcx, MAC_GET
+	mov rcx, NET_STATUS
 	call [b_system]
 	cmp eax, 0
 	je MACdone
@@ -104,7 +104,7 @@ nextMAC:
 	jnz nextMAC
 	call dump_al			; Display the last
 	inc edx
-	mov rcx, MAC_GET
+	mov rcx, NET_STATUS
 	call [b_system]
 	cmp eax, 0
 	je MACdone
