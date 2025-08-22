@@ -17,11 +17,8 @@ jobs:
     - name: nasm
       run: brew install nasm
 
-    - name: setup
-      run: ./setup.sh
-
-    - name: build
-      run: ./build.sh
+    - name: make
+      run: make all
 
   build-ubuntu:
     runs-on: ubuntu-latest
@@ -34,8 +31,5 @@ jobs:
     - name: install nasm
       run: sudo apt install nasm
 
-    - name: setup
-      run: ./setup.sh
-
-    - name: build
-      run: ./build.sh
+    - name: make
+      run: make all
