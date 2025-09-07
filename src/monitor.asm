@@ -87,6 +87,15 @@ skip_ramdrive:
 	call ui_output
 	xor edx, edx
 
+	; Check address of interface 0 - if clear then no supported interfaces
+	mov rcx, NET_STATUS
+	call [b_system]
+	cmp eax, 0
+	jne dispmac
+	mov rsi, namsg
+	call ui_output
+	jmp MACdone
+	
 dispmac:
 	mov rcx, NET_STATUS
 	call [b_system]
