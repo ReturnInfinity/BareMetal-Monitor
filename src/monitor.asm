@@ -262,9 +262,11 @@ testzone:
 	call [b_system]
 	sub rax, rbx
 	mov ecx, DUMP_RAX
-	call [b_system]	
+	call [b_system]
+	
 ;	xor ecx, ecx
 ;	div ecx
+
 ;	xor eax, eax			; Zero RAX for the packet counter
 ;	mov [0x1e8000], rax		; Store it to a temp location
 ;tst_loop:
@@ -276,6 +278,7 @@ testzone:
 ;	add qword [0x1e8000], 1		; Increment the packet counter
 ;tst_loop_nodata:
 ;	jmp tst_loop
+
 	jmp poll
 
 shutdown:
