@@ -1080,10 +1080,10 @@ ui_input_more:
 	call [b_input]			; Returns the character entered. 0 if there was none
 	jz ui_input_more		; If there was no character then halt until an interrupt is received
 ui_input_process:
-	cmp al, 0x02
-	je ui_input_inc_cursor
-	cmp al, 0x03
-	je ui_input_dec_cursor
+;	cmp al, 0x02
+;	je ui_input_inc_cursor
+;	cmp al, 0x03
+;	je ui_input_dec_cursor
 	cmp al, 0x1C			; If Enter key pressed, finish
 	je ui_input_done
 	cmp al, 0x0E			; Backspace
@@ -1114,19 +1114,19 @@ ui_input_backspace:
 	dec rcx				; decrement the counter by one
 	jmp ui_input_more
 
-ui_input_inc_cursor:
-	cmp ebx, ecx
-	je ui_input_more
-	call output_char		; Output the cursor
-	inc ebx
-	jmp ui_input_more
+;ui_input_inc_cursor:
+;	cmp ebx, ecx
+;	je ui_input_more
+;	call output_char		; Output the cursor
+;	inc ebx
+;	jmp ui_input_more
 
-ui_input_dec_cursor:
-	test ebx, ebx			; backspace at the beginning? get a new char
-	jz ui_input_more
-	call output_char		; Output the cursor
-	dec ebx
-	jmp ui_input_more
+;ui_input_dec_cursor:
+;	test ebx, ebx			; backspace at the beginning? get a new char
+;	jz ui_input_more
+;	call output_char		; Output the cursor
+;	dec ebx
+;	jmp ui_input_more
 
 ui_input_done:
 	xor al, al
@@ -1299,6 +1299,7 @@ macsep:			db ':', 0
 dumpsep:		db ': ', 0
 newline:		db 10, 0
 tab:			db 9, 0
+quote:			db '"', 0
 insufargs:		db 'Insufficient argument(s)', 0
 toomanyargs:		db 'Too many arguments', 0
 invalidargs:		db 'Invalid argument(s)', 0
