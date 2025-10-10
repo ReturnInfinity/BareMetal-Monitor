@@ -1068,21 +1068,22 @@ string_to_int_invalid:
 ui_input:
 	push rdi
 	push rdx			; Counter to keep track of max accepted characters
+	push rbx
 	push rax
 
 	mov rdx, rcx			; Max chars to accept
+	xor ebx, ebx			; Cursor position
 	xor ecx, ecx			; Offset from start
 
 ui_input_more:
-	mov al, '_'			; Cursor character
-	call output_char		; Output the cursor
-	mov al, 0x03			; Decrement cursor
-	call output_char		; Output the cursor
-ui_input_halt:
 	hlt				; Halt until an interrupt is received
 	call [b_input]			; Returns the character entered. 0 if there was none
-	jz ui_input_halt		; If there was no character then halt until an interrupt is received
+	jz ui_input_more		; If there was no character then halt until an interrupt is received
 ui_input_process:
+;	cmp al, 0x02
+;	je ui_input_inc_cursor
+;	cmp al, 0x03
+;	je ui_input_dec_cursor
 	cmp al, 0x1C			; If Enter key pressed, finish
 	je ui_input_done
 	cmp al, 0x0E			; Backspace
@@ -1094,23 +1095,38 @@ ui_input_process:
 	cmp rcx, rdx			; Check if we have reached the max number of chars
 	je ui_input_more		; Jump if we have (should beep as well)
 	stosb				; Store AL at RDI and increment RDI by 1
+	inc ebx
 	inc rcx				; Increment the counter
 	call output_char		; Display char
 	jmp ui_input_more
 
 ui_input_backspace:
-	test rcx, rcx			; backspace at the beginning? get a new char
+	test ecx, ecx			; backspace at the beginning? get a new char
 	jz ui_input_more
-	mov al, ' '
-	call output_char		; Output backspace as a character
 	mov al, 0x03			; Decrement cursor
 	call output_char		; Output the cursor
+	mov al, ' '
+	call output_char		; Output backspace as a character
 	mov al, 0x03			; Decrement cursor
 	call output_char		; Output the cursor
 	dec rdi				; go back one in the string
 	mov byte [rdi], 0x00		; NULL out the char
 	dec rcx				; decrement the counter by one
 	jmp ui_input_more
+
+;ui_input_inc_cursor:
+;	cmp ebx, ecx
+;	je ui_input_more
+;	call output_char		; Output the cursor
+;	inc ebx
+;	jmp ui_input_more
+
+;ui_input_dec_cursor:
+;	test ebx, ebx			; backspace at the beginning? get a new char
+;	jz ui_input_more
+;	call output_char		; Output the cursor
+;	dec ebx
+;	jmp ui_input_more
 
 ui_input_done:
 	xor al, al
@@ -1119,6 +1135,7 @@ ui_input_done:
 	call output_char		; Overwrite the cursor
 
 	pop rax
+	pop rbx
 	pop rdx
 	pop rdi
 	ret
@@ -1282,6 +1299,7 @@ macsep:			db ':', 0
 dumpsep:		db ': ', 0
 newline:		db 10, 0
 tab:			db 9, 0
+quote:			db '"', 0
 insufargs:		db 'Insufficient argument(s)', 0
 toomanyargs:		db 'Too many arguments', 0
 invalidargs:		db 'Invalid argument(s)', 0
