@@ -9,6 +9,7 @@
 
 BITS 64
 ORG 0x001E0000
+DEFAULT ABS
 MONITORSIZE equ 6144			; Pad Monitor to this length
 
 %include 'api/libBareMetal.asm'
