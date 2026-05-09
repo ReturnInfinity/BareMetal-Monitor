@@ -1280,9 +1280,7 @@ memmsg:			db ']  [mem: ', 0
 networkmsg:		db ']  [net: ', 0
 networkmacsep:		db ', ', 0
 diskmsg:		db ']  [hdd: ', 0
-mibmsg:			db ' MiB free', 0
-mhzmsg:			db ' MHz', 0
-coresmsg:		db ' x ', 0
+mibmsg:			db ' MiB', 0
 namsg:			db 'N/A', 0
 closebracketmsg:	db ']', 0
 space:			db ' ', 0
