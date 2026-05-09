@@ -96,7 +96,7 @@ skip_ramdrive:
 	mov rsi, namsg
 	call ui_output
 	jmp MACdone
-	
+
 dispmac:
 	mov rcx, NET_STATUS
 	call [b_system]
@@ -264,7 +264,7 @@ testzone:
 	sub rax, rbx
 	mov ecx, DUMP_RAX
 	call [b_system]
-	
+
 ;	xor ecx, ecx
 ;	div ecx
 
@@ -711,7 +711,7 @@ poke:
 	cmp byte [args], 3
 	jl insuf
 	jg toomany
-	
+
 	mov rsi, temp_string
 	call string_length
 	add rsi, 1
