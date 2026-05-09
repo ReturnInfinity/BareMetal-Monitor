@@ -50,7 +50,7 @@ skip_ramdrive:
 
 	; Output system details
 
-	; Output core count and speed
+	; Output core count
 	mov rsi, cpumsg
 	call ui_output
 	xor eax, eax
@@ -59,16 +59,6 @@ skip_ramdrive:
 	mov rdi, temp_string
 	mov rsi, rdi
 	call string_from_int
-	call ui_output
-	mov rsi, coresmsg
-	call ui_output
-	mov rsi, 0x5010
-	lodsw
-	mov rdi, temp_string
-	mov rsi, rdi
-	call string_from_int
-	call ui_output
-	mov rsi, mhzmsg
 	call ui_output
 
 	; Output memory size
