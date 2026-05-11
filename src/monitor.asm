@@ -140,6 +140,22 @@ MACdone:
 	mov rsi, newline
 	call ui_output
 
+	mov rbx, [0x5058]
+	mov rax, [0x110030]
+	sub rax, rbx
+	mov ecx, 1000000
+	mul rcx
+	mov rcx, [0x110038]
+	div rcx
+	mov rdi, temp_string
+	mov rsi, rdi
+	call string_from_int
+	call ui_output
+	mov rsi, us
+	call ui_output
+	mov rsi, newline
+	call ui_output
+
 	; Detect file system
 	mov rax, 0			; First sector
 	add rax, 32768
