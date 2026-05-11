@@ -123,6 +123,23 @@ MACdone:
 	mov al, 0xc3			; 'ret' opcode
 	stosb
 
+; Test
+	mov rbx, [0x5050]
+	mov rax, [0x5058]
+	sub rax, rbx
+	mov ecx, 1000000
+	mul rcx
+	mov rcx, [0x110038]
+	div rcx
+	mov rdi, temp_string
+	mov rsi, rdi
+	call string_from_int
+	call ui_output
+	mov rsi, us
+	call ui_output
+	mov rsi, newline
+	call ui_output
+
 	; Detect file system
 	mov rax, 0			; First sector
 	add rax, 32768
@@ -1286,6 +1303,7 @@ closebracketmsg:	db ']', 0
 space:			db ' ', 0
 macsep:			db ':', 0
 dumpsep:		db ': ', 0
+us:			db 'us', 0
 newline:		db 10, 0
 tab:			db 9, 0
 quote:			db '"', 0
