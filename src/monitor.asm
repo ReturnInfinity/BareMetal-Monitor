@@ -140,6 +140,9 @@ MACdone:
 	mov rsi, newline
 	call ui_output
 
+	mov rax, [0x110038]
+	cmp rax, 0
+	je skip_speed
 	mov rbx, [0x5058]
 	mov rax, [0x110030]
 	sub rax, rbx
@@ -155,6 +158,7 @@ MACdone:
 	call ui_output
 	mov rsi, newline
 	call ui_output
+skip_speed:
 
 	; Detect file system
 	mov rax, 0			; First sector
