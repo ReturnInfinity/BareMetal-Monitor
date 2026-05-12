@@ -124,6 +124,9 @@ MACdone:
 	stosb
 
 ; Test
+	mov rax, [0x110038]
+	cmp rax, 0
+	je skip_speed
 	mov rbx, [0x5050]
 	mov rax, [0x5058]
 	sub rax, rbx
@@ -140,9 +143,6 @@ MACdone:
 	mov rsi, newline
 	call ui_output
 
-	mov rax, [0x110038]
-	cmp rax, 0
-	je skip_speed
 	mov rbx, [0x5058]
 	mov rax, [0x110030]
 	sub rax, rbx
